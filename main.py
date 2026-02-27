@@ -93,52 +93,678 @@ def create_app():
 
     @app.get("/", response_class=HTMLResponse)
     def root():
-        s = shared_state.get_summary()
-        uptime = int(s["uptime_seconds"])
-        h, m, sec = uptime // 3600, (uptime % 3600) // 60, uptime % 60
-        pnl_color = "#4ade80" if s["total_pnl"] >= 0 else "#f87171"
-        agents_rows = "".join(
-            f'<tr><td>{n}</td><td style="color:#4ade80">● Aktif</td><td>{ts}</td></tr>'
-            for n, ts in s.get("agent_heartbeats", {}).items()
-        )
-        return f"""<!DOCTYPE html><html><head>
-        <title>Aurora AI</title><meta charset="utf-8">
-        <meta http-equiv="refresh" content="15">
-        <style>
-          *{{box-sizing:border-box;margin:0;padding:0}}
-          body{{font-family:'Courier New',monospace;background:#0a0f1e;color:#cbd5e1;min-height:100vh;padding:2rem}}
-          .container{{max-width:960px;margin:auto}}
-          h1{{color:#34d399;font-size:1.6rem;margin-bottom:.25rem}}
-          h2{{color:#64748b;font-size:.85rem;text-transform:uppercase;letter-spacing:.1em;margin:1.5rem 0 .5rem}}
-          .badge{{display:inline-block;background:#064e3b;color:#34d399;padding:.2rem .6rem;border-radius:9999px;font-size:.7rem;margin-left:.5rem}}
-          .grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1rem 0}}
-          .card{{background:#0f172a;border:1px solid #1e293b;border-radius:.5rem;padding:1rem}}
-          .card-label{{color:#64748b;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}}
-          .card-value{{font-size:1.4rem;font-weight:bold;margin-top:.25rem}}
-          table{{width:100%;border-collapse:collapse;font-size:.85rem}}
-          td,th{{border:1px solid #1e293b;padding:.4rem .75rem;text-align:left}}
-          th{{background:#0f172a;color:#475569;font-size:.7rem;text-transform:uppercase}}
-          .dim{{color:#334155;font-size:.7rem;margin-top:1.5rem}}
-          a{{color:#34d399;text-decoration:none}} a:hover{{text-decoration:underline}}
-        </style></head><body><div class="container">
-        <h1>🚀 Aurora AI Hedge Fund <span class="badge">● CANLI</span></h1>
-        <p class="dim">{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')} — otomatik yenileme: 15s</p>
-        <div class="grid">
-          <div class="card"><div class="card-label">Çalışma Süresi</div><div class="card-value" style="color:#34d399">{h:02d}:{m:02d}:{sec:02d}</div></div>
-          <div class="card"><div class="card-label">Toplam PnL</div><div class="card-value" style="color:{pnl_color}">${s['total_pnl']:+.4f}</div></div>
-          <div class="card"><div class="card-label">Kazanma Oranı</div><div class="card-value">{s['win_rate']}%</div></div>
-          <div class="card"><div class="card-label">İşlem Sayısı</div><div class="card-value">{s['trade_count']}</div></div>
-          <div class="card"><div class="card-label">Açık Pozisyonlar</div><div class="card-value">{s['open_positions']}</div></div>
-          <div class="card"><div class="card-label">İzlenen Semboller</div><div class="card-value">{s['market_symbols']}</div></div>
+        return """<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aurora AI — Trading Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #050810;
+  --surface:  #090d1a;
+  --panel:    #0c1220;
+  --border:   rgba(0,210,150,0.12);
+  --border2:  rgba(0,210,150,0.06);
+  --accent:   #00d296;
+  --accent2:  #00a3ff;
+  --danger:   #ff4d6d;
+  --warn:     #f5a623;
+  --text:     #c8d6e5;
+  --muted:    #4a5568;
+  --dim:      #1e2d3d;
+  --glow:     0 0 20px rgba(0,210,150,0.15);
+  --glow2:    0 0 40px rgba(0,210,150,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Space Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,210,150,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,210,150,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ambient glow blobs */
+body::after {
+  content: '';
+  position: fixed;
+  top: -20%; left: -10%;
+  width: 60vw; height: 60vw;
+  background: radial-gradient(ellipse, rgba(0,210,150,0.04) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+  animation: drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from { transform: translate(0,0) scale(1); }
+  to   { transform: translate(5vw,3vh) scale(1.05); }
+}
+
+/* ── LAYOUT ── */
+.shell {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ── TOPBAR ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--border2);
+  gap: 1rem;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: #fff;
+  display: flex; align-items: center; gap: .6rem;
+}
+
+.logo-mark {
+  width: 28px; height: 28px;
+  background: conic-gradient(from 180deg, var(--accent), var(--accent2), var(--accent));
+  border-radius: 6px;
+  display: grid; place-items: center;
+  font-size: .75rem;
+  animation: spin-slow 8s linear infinite;
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+.pulse-dot {
+  width: 7px; height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.5; transform:scale(0.8); }
+}
+
+.status-bar {
+  display: flex; align-items: center; gap: 1.5rem;
+  font-size: .7rem; color: var(--muted);
+}
+
+.status-pill {
+  display: flex; align-items: center; gap: .4rem;
+  background: rgba(0,210,150,0.08);
+  border: 1px solid rgba(0,210,150,0.2);
+  padding: .25rem .7rem;
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: .65rem; letter-spacing: .08em;
+}
+
+#clock { color: var(--text); font-size: .7rem; }
+
+.nav-links {
+  display: flex; gap: 1rem;
+}
+.nav-links a {
+  font-size: .65rem; letter-spacing: .08em; color: var(--muted);
+  text-decoration: none; text-transform: uppercase;
+  transition: color .2s;
+}
+.nav-links a:hover { color: var(--accent); }
+
+/* ── MAIN GRID ── */
+main {
+  padding: 1.5rem 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 1rem;
+}
+
+/* ── PANELS ── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .3s, box-shadow .3s;
+}
+
+.panel:hover {
+  border-color: rgba(0,210,150,0.25);
+  box-shadow: var(--glow);
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity .3s;
+}
+
+.panel:hover::before { opacity: 1; }
+
+.panel-label {
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .4rem;
+}
+
+.panel-value {
+  font-family: 'Syne', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  transition: color .3s;
+}
+
+.panel-sub {
+  font-size: .65rem; color: var(--muted);
+  margin-top: .3rem;
+}
+
+.positive { color: var(--accent) !important; }
+.negative { color: var(--danger) !important; }
+.neutral  { color: var(--text) !important; }
+
+/* ── UPTIME ── */
+.panel-uptime { grid-column: 1; }
+
+/* ── PNL — big card ── */
+.panel-pnl {
+  grid-column: 2;
+  background: linear-gradient(135deg, rgba(0,210,150,0.05), rgba(0,163,255,0.05));
+}
+
+/* ── WIN RATE ── */
+.panel-winrate { grid-column: 3; }
+
+/* ── MARKET TABLE ── */
+.panel-market {
+  grid-column: 1 / 3;
+  grid-row: 2;
+}
+
+/* ── SIGNALS ── */
+.panel-signals {
+  grid-column: 3;
+  grid-row: 2 / 4;
+}
+
+/* ── AGENTS ── */
+.panel-agents {
+  grid-column: 1 / 3;
+  grid-row: 3;
+}
+
+/* ── TABLE ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .72rem;
+  margin-top: .6rem;
+}
+
+.data-table th {
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: .4rem .6rem;
+  border-bottom: 1px solid var(--border2);
+  text-align: left;
+  font-weight: 400;
+}
+
+.data-table td {
+  padding: .45rem .6rem;
+  border-bottom: 1px solid var(--border2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-table tr:last-child td { border-bottom: none; }
+
+.data-table tr:hover td {
+  background: rgba(0,210,150,0.03);
+}
+
+/* ── TICKER NAME ── */
+.ticker {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: .75rem;
+  color: #fff;
+  letter-spacing: .03em;
+}
+
+/* ── SIGNAL BADGE ── */
+.sig-badge {
+  display: inline-block;
+  padding: .15rem .5rem;
+  border-radius: 4px;
+  font-size: .6rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.sig-buy  { background: rgba(0,210,150,0.12); color: var(--accent); border: 1px solid rgba(0,210,150,0.3); }
+.sig-sell { background: rgba(255,77,109,0.12); color: var(--danger); border: 1px solid rgba(255,77,109,0.3); }
+.sig-hold { background: rgba(245,166,35,0.1);  color: var(--warn);   border: 1px solid rgba(245,166,35,0.25); }
+
+/* ── AGENT STATUS ── */
+.agent-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+  margin-right: .4rem;
+}
+
+/* ── CONFIDENCE BAR ── */
+.conf-bar {
+  display: flex; align-items: center; gap: .5rem;
+}
+.conf-track {
+  flex: 1; height: 3px;
+  background: var(--dim);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.conf-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  border-radius: 2px;
+  transition: width .5s ease;
+}
+
+/* ── RSI BAR ── */
+.rsi-pill {
+  display: inline-block;
+  padding: .1rem .4rem;
+  border-radius: 3px;
+  font-size: .65rem;
+  font-variant-numeric: tabular-nums;
+}
+.rsi-low  { background: rgba(0,210,150,0.1);  color: var(--accent); }
+.rsi-high { background: rgba(255,77,109,0.1); color: var(--danger); }
+.rsi-mid  { background: rgba(100,116,139,0.15); color: var(--muted); }
+
+/* ── SECTION HEADER ── */
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: .65rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex; align-items: center; gap: .5rem;
+  margin-bottom: .5rem;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1; height: 1px;
+  background: var(--border2);
+}
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border2);
+  padding: .8rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .6rem;
+  color: var(--muted);
+}
+
+/* ── LOADING SHIMMER ── */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--dim) 25%, rgba(0,210,150,0.06) 50%, var(--dim) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+  border-radius: 3px;
+}
+
+/* ── FLASH ANIMATION ── */
+@keyframes flash-green { 0%,100% { background: transparent; } 50% { background: rgba(0,210,150,0.08); } }
+@keyframes flash-red   { 0%,100% { background: transparent; } 50% { background: rgba(255,77,109,0.08); } }
+.flash-g { animation: flash-green .6s; }
+.flash-r { animation: flash-red   .6s; }
+
+/* ── NUMBER CHANGE ── */
+@keyframes countup { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.updated { animation: countup .3s ease; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr 1fr; }
+  .panel-market, .panel-agents { grid-column: 1 / 3; }
+  .panel-signals { grid-column: 1 / 3; grid-row: auto; }
+}
+@media (max-width: 600px) {
+  main { grid-template-columns: 1fr; }
+  .panel-market, .panel-agents, .panel-signals,
+  .panel-pnl, .panel-winrate { grid-column: 1; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">⬡</div>
+    AURORA<span style="color:var(--accent)">_</span>AI
+  </div>
+  <div class="status-bar">
+    <div class="status-pill">
+      <div class="pulse-dot"></div>
+      CANLI
+    </div>
+    <span id="clock">--:--:-- UTC</span>
+  </div>
+  <nav class="nav-links">
+    <a href="/status">STATUS</a>
+    <a href="/market">MARKET</a>
+    <a href="/signals">SIGNALS</a>
+    <a href="/positions">POSITIONS</a>
+    <a href="/docs">API DOCS</a>
+  </nav>
+</header>
+
+<!-- MAIN -->
+<main id="main-grid">
+
+  <!-- UPTIME -->
+  <div class="panel panel-uptime">
+    <div class="panel-label">Çalışma Süresi</div>
+    <div class="panel-value positive" id="uptime">--:--:--</div>
+    <div class="panel-sub" id="started-at">başlatılıyor...</div>
+  </div>
+
+  <!-- PNL -->
+  <div class="panel panel-pnl">
+    <div class="panel-label">Toplam PnL</div>
+    <div class="panel-value" id="pnl">$+0.0000</div>
+    <div class="panel-sub" id="trade-count">0 işlem</div>
+  </div>
+
+  <!-- WIN RATE -->
+  <div class="panel panel-winrate">
+    <div class="panel-label">Kazanma Oranı</div>
+    <div class="panel-value" id="winrate">0%</div>
+    <div class="panel-sub" id="open-pos">0 açık pozisyon</div>
+  </div>
+
+  <!-- MARKET TABLE -->
+  <div class="panel panel-market">
+    <div class="section-title">Piyasa Verisi</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Sembol</th>
+          <th>Fiyat (USD)</th>
+          <th>24s %</th>
+          <th>RSI</th>
+          <th>MACD</th>
+          <th>Momentum</th>
+        </tr>
+      </thead>
+      <tbody id="market-body">
+        <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:1.5rem">
+          <span class="shimmer" style="display:inline-block;width:80%;height:12px"></span>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SIGNALS -->
+  <div class="panel panel-signals">
+    <div class="section-title">Son Sinyaller</div>
+    <div id="signals-list" style="display:flex;flex-direction:column;gap:.4rem;max-height:420px;overflow-y:auto">
+      <div style="color:var(--muted);font-size:.7rem;text-align:center;padding:2rem 0">
+        Sinyal bekleniyor...
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENTS -->
+  <div class="panel panel-agents">
+    <div class="section-title">Ajan Durumları</div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Ajan</th><th>Durum</th><th>Son Aktif</th><th>Rol</th></tr>
+      </thead>
+      <tbody id="agent-body">
+        <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:1rem">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <span>Aurora AI Hedge Fund v2.0 · Paper Trading Mode</span>
+  <span id="last-update">son güncelleme: --</span>
+</footer>
+
+</div>
+
+<script>
+// ── STATE ──
+let prevPrices = {};
+const AGENT_ROLES = {
+  MarketAgent:    'Veri Toplayıcı · CoinGecko',
+  StrategyAgent:  'Sinyal Üretici · RSI/MACD/BB',
+  RLMetaAgent:    'Q-Learning · Ağırlık Güncelleyici',
+  ExecutionAgent: 'Emir Uygulayıcı · Paper Mode',
+};
+
+// ── CLOCK ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toUTCString().split(' ')[4] + ' UTC';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── FORMAT ──
+function fmtPrice(n) {
+  if (n >= 10000) return '$' + n.toLocaleString('en', {maximumFractionDigits:0});
+  if (n >= 100)   return '$' + n.toFixed(2);
+  return '$' + n.toFixed(4);
+}
+function fmtPct(n) {
+  const s = (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+  return `<span class="${n>=0?'positive':'negative'}">${s}</span>`;
+}
+function fmtRsi(r) {
+  const cls = r < 35 ? 'rsi-low' : r > 65 ? 'rsi-high' : 'rsi-mid';
+  return `<span class="rsi-pill ${cls}">${r.toFixed(1)}</span>`;
+}
+function timeAgo(isoStr) {
+  const d = new Date(isoStr.includes('Z') ? isoStr : isoStr + 'Z');
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return s + 's önce';
+  return Math.floor(s/60) + 'm önce';
+}
+function fmtUptime(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ── FETCH STATUS ──
+async function fetchStatus() {
+  try {
+    const r = await fetch('/status');
+    const d = await r.json();
+
+    // PNL
+    const pnlEl = document.getElementById('pnl');
+    const newPnl = '$' + (d.total_pnl >= 0 ? '+' : '') + d.total_pnl.toFixed(4);
+    if (pnlEl.textContent !== newPnl) {
+      pnlEl.textContent = newPnl;
+      pnlEl.className = 'panel-value updated ' + (d.total_pnl >= 0 ? 'positive' : 'negative');
+    }
+
+    document.getElementById('trade-count').textContent = d.trade_count + ' işlem tamamlandı';
+    document.getElementById('winrate').textContent = d.win_rate + '%';
+    document.getElementById('open-pos').textContent = d.open_positions + ' açık pozisyon · ' + d.market_symbols + ' sembol';
+    document.getElementById('uptime').textContent = fmtUptime(d.uptime_seconds);
+
+    // Agents
+    const ab = document.getElementById('agent-body');
+    const agents = d.agent_heartbeats || {};
+    if (Object.keys(agents).length) {
+      ab.innerHTML = Object.entries(agents).map(([name, ts]) => `
+        <tr>
+          <td><span class="ticker">${name}</span></td>
+          <td><span class="agent-dot"></span><span class="positive" style="font-size:.65rem">AKTIF</span></td>
+          <td style="color:var(--muted)">${timeAgo(ts)}</td>
+          <td style="color:var(--muted);font-size:.62rem">${AGENT_ROLES[name] || '—'}</td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('last-update').textContent =
+      'son güncelleme: ' + new Date().toLocaleTimeString('tr-TR');
+  } catch(e) { console.warn('status fetch error', e); }
+}
+
+// ── FETCH MARKET ──
+async function fetchMarket() {
+  try {
+    const r = await fetch('/market');
+    const d = await r.json();
+    const symbols = d.symbols || {};
+    const mb = document.getElementById('market-body');
+
+    if (!Object.keys(symbols).length) return;
+
+    mb.innerHTML = Object.entries(symbols).map(([sym, data]) => {
+      const price = data.price || 0;
+      const prev  = prevPrices[sym] || price;
+      const flashCls = price > prev ? 'flash-g' : price < prev ? 'flash-r' : '';
+      prevPrices[sym] = price;
+
+      const change = data.change_24h || 0;
+      const rsi    = data.rsi || 50;
+      const macd   = data.macd || 0;
+      const mom    = data.momentum_1m || 0;
+      const macdClr = macd >= 0 ? 'positive' : 'negative';
+      const momClr  = mom >= 0  ? 'positive' : 'negative';
+
+      const symLabel = sym.charAt(0).toUpperCase() + sym.slice(1,3).toUpperCase();
+
+      return `<tr class="${flashCls}">
+        <td><span class="ticker">${symLabel}</span> <span style="color:var(--muted);font-size:.6rem">${sym.toUpperCase()}</span></td>
+        <td style="color:#fff;font-variant-numeric:tabular-nums">${fmtPrice(price)}</td>
+        <td>${fmtPct(change)}</td>
+        <td>${fmtRsi(rsi)}</td>
+        <td class="${macdClr}" style="font-variant-numeric:tabular-nums">${macd >= 0 ? '+' : ''}${macd.toFixed(5)}</td>
+        <td class="${momClr}">${mom >= 0 ? '+' : ''}${mom.toFixed(3)}%</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.warn('market fetch error', e); }
+}
+
+// ── FETCH SIGNALS ──
+async function fetchSignals() {
+  try {
+    const r = await fetch('/signals');
+    const d = await r.json();
+    const list = d.signals || [];
+    const sl = document.getElementById('signals-list');
+
+    if (!list.length) return;
+
+    sl.innerHTML = list.slice(0, 15).map(sig => {
+      const cls = sig.direction === 'buy' ? 'sig-buy' : sig.direction === 'sell' ? 'sig-sell' : 'sig-hold';
+      const pct = Math.round(sig.confidence * 100);
+      const symShort = sig.symbol.charAt(0).toUpperCase() + sig.symbol.slice(1,3).toUpperCase();
+      const t = new Date(sig.timestamp.includes('Z') ? sig.timestamp : sig.timestamp + 'Z');
+      const timeStr = t.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+      return `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:.5rem .7rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+          <span class="ticker" style="font-size:.72rem">${symShort}</span>
+          <span class="sig-badge ${cls}">${sig.direction.toUpperCase()}</span>
         </div>
-        <h2>Ajan Durumları</h2>
-        <table><tr><th>Ajan</th><th>Durum</th><th>Son Aktif</th></tr>{agents_rows}</table>
-        <p class="dim" style="margin-top:1rem">
-          API: <a href="/docs">/docs</a> &nbsp;|&nbsp; <a href="/status">/status</a> &nbsp;|&nbsp;
-          <a href="/market">/market</a> &nbsp;|&nbsp; <a href="/signals">/signals</a> &nbsp;|&nbsp;
-          <a href="/positions">/positions</a>
-        </p>
-        </div></body></html>"""
+        <div class="conf-bar">
+          <div class="conf-track"><div class="conf-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:.6rem;color:var(--muted);white-space:nowrap">${pct}%</span>
+        </div>
+        <div style="font-size:.58rem;color:var(--muted);margin-top:.25rem">${timeStr}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.warn('signals fetch error', e); }
+}
+
+// ── INIT & POLL ──
+async function refresh() {
+  await Promise.all([fetchStatus(), fetchMarket(), fetchSignals()]);
+}
+
+refresh();
+setInterval(refresh, 5000);  // Her 5 saniyede güncelle
+</script>
+</body>
+</html>"""
 
     @app.get("/health")
     def health():
