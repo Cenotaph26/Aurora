@@ -292,6 +292,7 @@ class SharedState:
                 tp_dist = abs(active_tp - p.entry_price)
                 cur_dist = abs(cur - p.entry_price)
                 progress = min(100, max(0, (cur_dist / tp_dist) * 100)) if tp_dist > 0 else 0
+                lev = p.indicators_at_open.get("leverage", 1) if p.indicators_at_open else 1
                 result.append({
                     "symbol": sym,
                     "side": p.side,
@@ -305,6 +306,7 @@ class SharedState:
                     "pnl": round(pnl, 6),
                     "pnl_pct": round(pnl_pct, 2),
                     "value_usd": round(p.value_usd, 2),
+                    "leverage": lev,
                     "progress_pct": round(progress, 1),
                     "opened_at": p.opened_at.isoformat(),
                     "reason": p.reason,

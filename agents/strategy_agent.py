@@ -9,7 +9,7 @@ from utils.logger import setup_logger
 
 logger = setup_logger("StrategyAgent")
 INTERVAL = int(os.getenv("STRATEGY_INTERVAL", "20"))
-MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.55"))
+MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.45"))
 
 def rsi_strategy(data):
     rsi = data.get("rsi", 50)
@@ -23,10 +23,13 @@ def macd_strategy(data):
     macd = data.get("macd", 0)
     sig  = data.get("macd_signal", 0)
     chg  = data.get("change_24h", 0)
-    if macd > sig and macd > 0 and chg > 1:
-        return "buy", min(0.5 + abs(macd-sig)*10, 0.9), f"MACD yukarı kesiş ({macd:.5f})"
-    elif macd < sig and macd < 0 and chg < -1:
-        return "sell", min(0.5 + abs(macd-sig)*10, 0.9), f"MACD aşağı kesiş ({macd:.5f})"
+    diff = abs(macd - sig)
+    if macd > sig and diff > 0:
+        conf = min(0.5 + diff * 50, 0.9)
+        return "buy", conf, f"MACD yukarı kesiş ({macd:.5f})"
+    elif macd < sig and diff > 0:
+        conf = min(0.5 + diff * 50, 0.9)
+        return "sell", conf, f"MACD aşağı kesiş ({macd:.5f})"
     return "hold", 0.3, ""
 
 def bollinger_strategy(data):
@@ -43,11 +46,22 @@ def bollinger_strategy(data):
         return "sell", min(0.55 + (price-hi)/bw, 0.90), f"BB üst kırılım (price={price:.4f}>hi={hi:.4f})"
     return "hold", 0.25, ""
 
+def momentum_strategy(data):
+    mom = data.get("momentum_1m", 0)
+    chg = data.get("change_24h", 0)
+    rsi = data.get("rsi", 50)
+    if mom > 0.15 and chg > 1 and rsi < 65:
+        return "buy", min(0.45 + mom * 2, 0.85), f"Momentum ↑ ({mom:+.3f}%)"
+    elif mom < -0.15 and chg < -1 and rsi > 35:
+        return "sell", min(0.45 + abs(mom) * 2, 0.85), f"Momentum ↓ ({mom:+.3f}%)"
+    return "hold", 0.2, ""
+
 def composite_vote(symbol, data):
     strats = {
         "rsi":       rsi_strategy(data),
         "macd":      macd_strategy(data),
         "bollinger": bollinger_strategy(data),
+        "momentum":  momentum_strategy(data),
     }
     votes = {"buy": 0.0, "sell": 0.0, "hold": 0.0}
     reasons = []
@@ -83,7 +97,7 @@ class StrategyAgent:
                     await asyncio.sleep(5)
                     continue
                 for symbol, data in self.state.market_data.items():
-                    if data.get("history_len", 0) < 20:
+                    if data.get("history_len", 0) < 5:
                         continue
                     sig = composite_vote(symbol, data)
                     if sig:

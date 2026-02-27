@@ -114,7 +114,7 @@ a{color:var(--g);text-decoration:none}
 
 /* ── TICKER TAPE ── */
 .tape{position:relative;z-index:100;background:var(--s0);border-bottom:1px solid var(--b0);height:26px;overflow:hidden;display:flex;align-items:center}
-.tape-inner{display:flex;white-space:nowrap;animation:tape 300s linear infinite}
+.tape-inner{display:flex;white-space:nowrap;animation:tape 900s linear infinite}
 .tape-inner:hover{animation-play-state:paused}
 @keyframes tape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .ti{display:inline-flex;align-items:center;gap:.35rem;padding:0 1rem;font-size:.65rem;border-right:1px solid var(--t3)}
@@ -161,7 +161,7 @@ a{color:var(--g);text-decoration:none}
   grid-template-columns:1fr 1fr 1fr 300px;
   grid-template-rows:180px 200px 280px 200px;
   gap:1px;background:var(--t3);
-  height:calc(100vh - 76px);overflow:hidden}
+  height:calc(100vh - 100px);overflow:hidden}
 
 /* ── PANELS ── */
 .panel{background:var(--s1);display:flex;flex-direction:column;overflow:hidden}
@@ -324,6 +324,20 @@ canvas#pc{width:100%!important;height:100%!important}
 .btn-cancel{background:var(--s2);border:1px solid var(--b0);color:var(--t2);
   padding:.4rem .9rem;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:.7rem}
 
+/* ── MANUAL TRADE MODAL ── */
+.modal-trade{background:var(--s1);border:1px solid rgba(0,150,255,0.3);border-radius:var(--rad2);width:380px;max-width:95vw}
+.lev-btns{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem}
+.lev-btn{padding:.25rem .6rem;border-radius:3px;border:1px solid var(--b0);background:var(--s2);color:var(--t2);cursor:pointer;font-family:var(--mono);font-size:.65rem;transition:all .15s}
+.lev-btn.active{background:rgba(0,150,255,0.2);border-color:var(--b);color:var(--b)}
+.trade-side-btns{display:flex;gap:.4rem;margin:.5rem 0}
+.ts-btn{flex:1;padding:.5rem;border-radius:5px;border:1px solid;cursor:pointer;font-family:var(--head);font-size:.85rem;font-weight:700;letter-spacing:.05em;transition:all .15s;text-align:center}
+.ts-long{background:rgba(0,195,130,0.1);border-color:rgba(0,195,130,0.35);color:var(--g)}
+.ts-long:hover,.ts-long.active{background:rgba(0,195,130,0.25);border-color:var(--g)}
+.ts-short{background:rgba(255,59,92,0.1);border-color:rgba(255,59,92,0.35);color:var(--r)}
+.ts-short:hover,.ts-short.active{background:rgba(255,59,92,0.25);border-color:var(--r)}
+.trade-preview{background:var(--s2);border-radius:5px;padding:.5rem .7rem;font-size:.62rem;color:var(--t1);margin:.4rem 0;border:1px solid var(--b0)}
+.tp{display:flex;justify-content:space-between;margin:.15rem 0}
+.tp .lbl{color:var(--t2)}
 /* ── SENTIMENT BAR ── */
 .sent-bar{display:flex;align-items:center;gap:.5rem;padding:.35rem .8rem;border-bottom:1px solid var(--b0);flex-shrink:0;font-size:.6rem}
 .sent-seg{height:6px;border-radius:2px;transition:width .6s ease;min-width:2px}
@@ -375,6 +389,20 @@ canvas#pc{width:100%!important;height:100%!important}
   </div>
   <div class="top-right">
     <div id="clock">--:--:--</div>
+  </div>
+</div>
+
+<!-- TOP MOVERS STRIP -->
+<div style="position:relative;z-index:98;background:var(--s0);border-bottom:1px solid var(--b0);height:24px;display:flex;align-items:center;overflow:hidden;flex-shrink:0">
+  <div style="display:flex;align-items:center;padding:0 .8rem;border-right:1px solid var(--b0);flex-shrink:0;gap:.3rem">
+    <span style="font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t2)">🔥 ÖNCÜLER</span>
+  </div>
+  <div id="movers-strip" style="display:flex;gap:0;overflow:hidden;flex:1">
+    <span style="font-size:.6rem;color:var(--t2);padding:0 .8rem">Veriler yükleniyor...</span>
+  </div>
+  <div style="display:flex;align-items:center;padding:0 .7rem;border-left:1px solid var(--b0);flex-shrink:0;gap:.5rem">
+    <span style="font-size:.52rem;color:var(--t2)">Sonraki güncelleme:</span>
+    <span id="update-countdown" style="font-size:.6rem;color:var(--b);font-variant-numeric:tabular-nums;min-width:25px">30s</span>
   </div>
 </div>
 
@@ -435,8 +463,9 @@ canvas#pc{width:100%!important;height:100%!important}
           <th onclick="sortMkt('vol')">Hacim</th>
           <th>BB %</th>
           <th>Sinyal</th>
+          <th>İşlem</th>
         </tr></thead>
-        <tbody id="mkt-body"><tr><td colspan="8" style="padding:1.5rem;text-align:center">
+        <tbody id="mkt-body"><tr><td colspan="9" style="padding:1.5rem;text-align:center">
           <div class="shim" style="width:70%;margin:auto;height:12px"></div>
         </td></tr></tbody>
       </table>
@@ -519,6 +548,60 @@ canvas#pc{width:100%!important;height:100%!important}
 
 </div><!-- workspace -->
 
+<!-- MANUAL TRADE MODAL -->
+<div class="modal-bg" id="trade-modal">
+  <div class="modal modal-trade">
+    <div class="modal-head" style="border-color:rgba(0,150,255,0.25)">
+      <h2 style="color:var(--b)">⚡ MANUEL İŞLEM — <span id="tm-sym-title">—</span></h2>
+      <button class="modal-close" onclick="closeTradeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+        <div>
+          <div style="font-size:.55rem;color:var(--t2);text-transform:uppercase;letter-spacing:.1em">Anlık Fiyat</div>
+          <div style="font-family:var(--head);font-size:1.4rem;font-weight:800;color:#fff" id="tm-price">$—</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.55rem;color:var(--t2);text-transform:uppercase;letter-spacing:.1em">24s Değişim</div>
+          <div style="font-family:var(--head);font-size:1rem;font-weight:700" id="tm-change">—</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.8rem;margin-bottom:.5rem;font-size:.62rem">
+        <span style="color:var(--t2)">RSI: <span id="tm-rsi" style="color:var(--y)">—</span></span>
+        <span style="color:var(--t2)">MACD: <span id="tm-macd" style="color:var(--t1)">—</span></span>
+        <span style="color:var(--t2)">Vol: <span id="tm-vol" style="color:var(--b)">—</span></span>
+      </div>
+      <div class="trade-side-btns">
+        <div class="ts-btn ts-long active" id="ts-long" onclick="selectSide('long')">▲ LONG</div>
+        <div class="ts-btn ts-short" id="ts-short" onclick="selectSide('short')">▼ SHORT</div>
+      </div>
+      <div class="field-group">
+        <label>Kaldıraç</label>
+        <div class="lev-btns" id="lev-btns">
+          <button class="lev-btn active" onclick="selectLev(1)">1x</button>
+          <button class="lev-btn" onclick="selectLev(2)">2x</button>
+          <button class="lev-btn" onclick="selectLev(3)">3x</button>
+          <button class="lev-btn" onclick="selectLev(5)">5x</button>
+          <button class="lev-btn" onclick="selectLev(10)">10x</button>
+          <button class="lev-btn" onclick="selectLev(20)">20x</button>
+        </div>
+      </div>
+      <div class="trade-preview" id="trade-preview">
+        <div class="tp"><span class="lbl">Pozisyon Büyüklüğü</span><span id="tp-size">—</span></div>
+        <div class="tp"><span class="lbl">Stop Loss</span><span id="tp-sl" style="color:var(--r)">—</span></div>
+        <div class="tp"><span class="lbl">TP 1</span><span id="tp-tp1" style="color:var(--g)">—</span></div>
+        <div class="tp"><span class="lbl">TP 2</span><span id="tp-tp2" style="color:var(--g)">—</span></div>
+        <div class="tp"><span class="lbl">TP 3</span><span id="tp-tp3" style="color:var(--g)">—</span></div>
+        <div class="tp" style="margin-top:.3rem;border-top:1px solid var(--b0);padding-top:.3rem"><span class="lbl">Risk</span><span id="tp-risk" style="color:var(--y)">—</span></div>
+      </div>
+    </div>
+    <div class="modal-foot" style="border-color:rgba(0,150,255,0.15)">
+      <button class="btn-cancel" onclick="closeTradeModal()">İptal</button>
+      <button id="tm-exec-btn" onclick="executeTrade()" style="background:rgba(0,195,130,0.15);border:1px solid rgba(0,195,130,0.4);color:var(--g);padding:.4rem 1.2rem;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:.7rem;font-weight:600">⚡ LONG AÇ</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL -->
 <div class="modal-bg" id="settings-modal">
   <div class="modal">
@@ -566,7 +649,7 @@ canvas#pc{width:100%!important;height:100%!important}
 'use strict';
 const ST={pnlHist:[0],prevP:{},chartMode:'cumulative',peakEquity:1000};
 const SYM={'bitcoin':'BTC','ethereum':'ETH','solana':'SOL','binancecoin':'BNB','ripple':'XRP'};
-const ROLES={MarketAgent:'CoinGecko · Veri Toplayıcı',StrategyAgent:'RSI/MACD/BB · Sinyal Üretici',
+const ROLES={MarketAgent:'Binance Futures · Veri Toplayıcı',StrategyAgent:'RSI/MACD/BB · Sinyal Üretici',
   RLMetaAgent:'Q-Learning · Ağırlık Güncelleyici',ExecutionAgent:'Paper Trade · Emir Uygulayıcı'};
 
 // ── CHART ──
@@ -733,12 +816,14 @@ function renderMkt(){
     const gv=x=>({'sym':0,price:x.price||0,change:x.change_24h||0,rsi:x.rsi||50,macd:x.macd||0,vol:x.volume_24h||0}[mktSort]||0);
     return(gv(a)-gv(b))*mktDir;
   });
+  updateMoversStrip(entries);
   document.getElementById('mkt-body').innerHTML=entries.map(([sym,d])=>{
     const price=d.price||0;const prev=ST.prevP[sym]||price;
     const fl=price>prev?'fl-g':price<prev?'fl-r':'';ST.prevP[sym]=price;
     const chg=d.change_24h||0;const rsi=d.rsi||50;const macd=d.macd||0;
     const vol=d.volume_24h||0;const mom=d.momentum_1m||0;
     const rsiCls=rsi>70?'rsi-ob':rsi<30?'rsi-os':'rsi-n';
+    const rowBg=chg>3?'rgba(0,195,130,0.03)':chg<-3?'rgba(255,59,92,0.03)':'';
     let sig='<span style="color:var(--t2)">–</span>';
     if(rsi<30&&macd>0)sig='<span class="pos-g">▲ BUY</span>';
     else if(rsi>70&&macd<0)sig='<span class="pos-r">▼ SELL</span>';
@@ -746,7 +831,7 @@ function renderMkt(){
     else if(rsi>65)sig='<span class="pos-r" style="opacity:.7">↓ Zayıf Sat</span>';
     const bbPct=d.bb_upper&&d.bb_lower?Math.round(((price-d.bb_lower)/(d.bb_upper-d.bb_lower))*100):50;
     const bw=Math.max(0,Math.min(100,bbPct));
-    return`<tr class="${fl}">
+    return`<tr class="${fl}" style="background:${rowBg}">
       <td><span class="sym">${shortSym(sym)}</span><span class="sym-s">${sym.toUpperCase()}</span></td>
       <td style="color:#e0eef8">${fP(price)}</td>
       <td class="${chg>=0?'pos-g':'pos-r'}">${chg>=0?'+':''}${chg.toFixed(2)}%</td>
@@ -755,6 +840,10 @@ function renderMkt(){
       <td class="neu">${fV(vol)}</td>
       <td><div class="bar"><div class="bt"><div class="bf ${bw>50?'bf-g':'bf-r'}" style="width:${bw}%"></div></div><span style="font-size:.58rem;min-width:28px;text-align:right;color:${mom>=0?'var(--g)':'var(--r)'}">${mom>=0?'+':''}${mom.toFixed(2)}%</span></div></td>
       <td>${sig}</td>
+      <td style="white-space:nowrap">
+        <button onclick="openTradeModalDirect('${sym}')" style="font-size:.52rem;padding:.1rem .35rem;background:rgba(0,195,130,0.1);border:1px solid rgba(0,195,130,0.25);color:var(--g);border-radius:3px;cursor:pointer;font-family:var(--mono)" title="Long Aç">▲L</button>
+        <button onclick="openTradeModalDirectShort('${sym}')" style="font-size:.52rem;padding:.1rem .35rem;background:rgba(255,59,92,0.1);border:1px solid rgba(255,59,92,0.25);color:var(--r);border-radius:3px;cursor:pointer;font-family:var(--mono);margin-left:.2rem" title="Short Aç">▼S</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -793,6 +882,10 @@ async function fetchPositions(){
     const open=d.open||[];set('pos-cnt',open.length+' Aktif');set('k-op',open.length,'y');
     const body=document.getElementById('pos-body');
     updatePosSummary(open);
+    // Update open PnL in stats panel
+    const openPnl=open.reduce((s,p)=>s+(p.pnl||0),0);
+    const opEl=document.getElementById('s-opnl');
+    if(opEl){opEl.textContent=(openPnl>=0?'+':'')+'$'+openPnl.toFixed(4);opEl.className='sc-v '+(openPnl>=0?'g':'r');}
     if(!open.length){body.innerHTML='<div class="empty" style="height:80px"><div>Açık pozisyon yok</div></div>';return}
     body.innerHTML=open.map(p=>{
       const sym=shortSym(p.symbol);const pnlCls=p.pnl>=0?'pos-g':'pos-r';
@@ -837,6 +930,34 @@ async function fetchPositions(){
 }
 
 // ── POSITION SUMMARY + SENTIMENT ──
+// ── MOVERS STRIP + COUNTDOWN ──
+let countdownVal=30;
+setInterval(()=>{
+  countdownVal--;
+  if(countdownVal<=0)countdownVal=30;
+  const el=document.getElementById('update-countdown');
+  if(el){el.textContent=countdownVal+'s';el.style.color=countdownVal<=5?'var(--r)':countdownVal<=10?'var(--y)':'var(--b)';}
+},1000);
+
+function updateMoversStrip(entries){
+  if(!entries.length)return;
+  const sorted=[...entries].sort((a,b)=>(b[1].change_24h||0)-(a[1].change_24h||0));
+  const top5=sorted.slice(0,5);
+  const bot5=sorted.slice(-5).reverse();
+  const movers=[...top5,...bot5];
+  const html=movers.map(([sym,d])=>{
+    const chg=d.change_24h||0;
+    const col=chg>=0?'var(--g)':'var(--r)';
+    const bg=chg>=0?'rgba(0,195,130,0.06)':'rgba(255,59,92,0.06)';
+    return`<span style="display:inline-flex;align-items:center;gap:.3rem;padding:0 .7rem;border-right:1px solid var(--b0);height:24px;background:${bg};font-size:.6rem;cursor:pointer" onclick="openTradeModal('${shortSym(sym)}')">
+      <span style="color:#e0eef8;font-weight:500">${shortSym(sym)}</span>
+      <span style="color:${col}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>
+    </span>`;
+  }).join('');
+  const el=document.getElementById('movers-strip');
+  if(el)el.innerHTML=html;
+}
+
 function updateSentiment(){
   const entries=Object.values(mktData);
   if(!entries.length)return;
@@ -963,6 +1084,112 @@ async function saveSettings(){
 }
 document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSettings()});
 
+// ── MANUAL TRADE ──
+let tradeState={symbol:'',side:'long',leverage:1};
+
+function openTradeModalDirect(sym, defaultSide='long'){
+  openTradeModalFull(sym, defaultSide);
+}
+function openTradeModalDirectShort(sym){ openTradeModalDirect(sym, 'short'); }
+function openTradeModal(sym, defaultSide='long'){
+  const fullSym = sym.endsWith('USDT')||sym.endsWith('BUSD') ? sym : sym+'USDT';
+  openTradeModalFull(fullSym, defaultSide);
+}
+function openTradeModalFull(fullSym, defaultSide='long'){
+  const sym = shortSym(fullSym);
+  tradeState={symbol:fullSym, side:defaultSide, leverage:1};
+  const d=mktData[fullSym]||{};
+  document.getElementById('tm-sym-title').textContent=shortSym(fullSym);
+  document.getElementById('tm-price').textContent=fP(d.price||0);
+  const chg=d.change_24h||0;
+  const chgEl=document.getElementById('tm-change');
+  chgEl.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%';
+  chgEl.style.color=chg>=0?'var(--g)':'var(--r)';
+  const rsi=d.rsi||50;
+  const rsiEl=document.getElementById('tm-rsi');
+  rsiEl.textContent=rsi.toFixed(1);
+  rsiEl.style.color=rsi<30?'var(--g)':rsi>70?'var(--r)':'var(--y)';
+  document.getElementById('tm-macd').textContent=(d.macd||0).toFixed(5);
+  document.getElementById('tm-vol').textContent=fV(d.volume_24h||0);
+  selectSide(defaultSide);
+  document.getElementById('trade-modal').classList.add('open');
+}
+function openTradeModalShort(sym){ openTradeModal(sym, 'short'); } // legacy
+
+function closeTradeModal(){ document.getElementById('trade-modal').classList.remove('open'); }
+
+function selectSide(side){
+  tradeState.side=side;
+  document.getElementById('ts-long').classList.toggle('active', side==='long');
+  document.getElementById('ts-short').classList.toggle('active', side==='short');
+  const btn=document.getElementById('tm-exec-btn');
+  if(side==='long'){
+    btn.textContent='⚡ LONG AÇ';
+    btn.style.background='rgba(0,195,130,0.15)';
+    btn.style.borderColor='rgba(0,195,130,0.4)';
+    btn.style.color='var(--g)';
+  } else {
+    btn.textContent='⚡ SHORT AÇ';
+    btn.style.background='rgba(255,59,92,0.15)';
+    btn.style.borderColor='rgba(255,59,92,0.4)';
+    btn.style.color='var(--r)';
+  }
+  updateTradePreview();
+}
+
+function selectLev(lev){
+  tradeState.leverage=lev;
+  document.querySelectorAll('.lev-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.textContent)===lev);
+  });
+  updateTradePreview();
+}
+
+function updateTradePreview(){
+  const d=mktData[tradeState.symbol]||{};
+  const price=d.price||0;
+  if(!price) return;
+  const riskUsd=1000*0.02; // 2% risk
+  const posSize=riskUsd*tradeState.leverage;
+  const slPct=0.03;const tpPct=0.06;
+  let sl,tp1,tp2,tp3;
+  if(tradeState.side==='long'){
+    sl=price*(1-slPct); tp1=price*(1+tpPct); tp2=price*(1+tpPct*2); tp3=price*(1+tpPct*3);
+  } else {
+    sl=price*(1+slPct); tp1=price*(1-tpPct); tp2=price*(1-tpPct*2); tp3=price*(1-tpPct*3);
+  }
+  document.getElementById('tp-size').textContent='$'+posSize.toFixed(2);
+  document.getElementById('tp-sl').textContent=fP(sl)+' (-'+( slPct*100).toFixed(0)+'%)';
+  document.getElementById('tp-tp1').textContent=fP(tp1)+' (+'+( tpPct*100).toFixed(0)+'%)';
+  document.getElementById('tp-tp2').textContent=fP(tp2)+' (+'+(tpPct*200).toFixed(0)+'%)';
+  document.getElementById('tp-tp3').textContent=fP(tp3)+' (+'+(tpPct*300).toFixed(0)+'%)';
+  document.getElementById('tp-risk').textContent='$'+(riskUsd*slPct).toFixed(2)+' maks. kayıp';
+}
+
+async function executeTrade(){
+  const btn=document.getElementById('tm-exec-btn');
+  btn.textContent='⏳ Gönderiliyor...';btn.disabled=true;
+  try{
+    const r=await fetch('/trade/manual',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({symbol:tradeState.symbol, side:tradeState.side, leverage:tradeState.leverage})
+    }).then(r=>r.json());
+    if(r.error){alert('Hata: '+r.error);}
+    else if(r.action==='opened'){
+      closeTradeModal();
+      await Promise.all([fetchPositions(),fetchStatus(),fetchLog()]);
+    } else if(r.action==='closed'){
+      alert('Pozisyon kapatıldı. PnL: $'+(r.pnl>=0?'+':'')+r.pnl.toFixed(4));
+      closeTradeModal();
+      await Promise.all([fetchPositions(),fetchHistory(),fetchStatus(),fetchLog()]);
+    }
+  }catch(e){alert('Bağlantı hatası: '+e);}
+  finally{btn.disabled=false;}
+}
+
+document.getElementById('trade-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeTradeModal()});
+
 // ── MAIN REFRESH ──
 async function refresh(){
   await Promise.all([fetchStatus(),fetchMarket(),fetchSignals(),fetchPositions(),fetchHistory(),fetchLog()]);
@@ -1064,6 +1291,68 @@ def create_app():
             return {"error": "Fiyat verisi yok"}
         pnl = await shared_state.close_position(symbol, price, "MANUAL")
         return {"ok": True, "pnl": pnl}
+
+    @app.post("/trade/manual")
+    async def manual_trade(req: Request):
+        from utils.state import Position
+        data = await req.json()
+        symbol   = data.get("symbol", "").upper()
+        side     = data.get("side", "long")    # "long" | "short"
+        leverage = int(data.get("leverage", 1))
+
+        if not symbol:
+            return {"error": "Sembol gerekli"}
+
+        market = shared_state.market_data.get(symbol, {})
+        price  = market.get("price", 0)
+        if price <= 0:
+            return {"error": f"{symbol} için fiyat verisi yok"}
+
+        # Close if already open
+        if symbol in shared_state.positions:
+            pnl = await shared_state.close_position(symbol, price, "MANUAL")
+            return {"ok": True, "action": "closed", "pnl": pnl}
+
+        if len(shared_state.positions) >= shared_state.settings.max_positions:
+            return {"error": "Maksimum pozisyon sayısına ulaşıldı"}
+
+        sl_pct = shared_state.settings.stop_loss_pct
+        tp_pct = shared_state.settings.take_profit_pct
+        risk_usd = 1000.0 * shared_state.settings.risk_pct
+        qty = round(risk_usd / price, 8)
+
+        if side == "long":
+            sl = round(price * (1 - sl_pct), 8)
+            tp_levels = [
+                round(price * (1 + tp_pct), 8),
+                round(price * (1 + tp_pct * 2), 8),
+                round(price * (1 + tp_pct * 3), 8),
+            ]
+        else:
+            sl = round(price * (1 + sl_pct), 8)
+            tp_levels = [
+                round(price * (1 - tp_pct), 8),
+                round(price * (1 - tp_pct * 2), 8),
+                round(price * (1 - tp_pct * 3), 8),
+            ]
+
+        pos = Position(
+            symbol=symbol, side=side, qty=qty,
+            entry_price=price, current_price=price,
+            stop_loss=sl,
+            take_profit=tp_levels[0],
+            take_profit_levels=tp_levels,
+            tp_hit_count=0,
+            value_usd=round(qty * price, 4),
+            reason=f"Manuel işlem ({side.upper()} {leverage}x)",
+            ai_summary=f"Manuel olarak açıldı. {side.upper()} @ ${price:.4f} | {leverage}x kaldıraç",
+            indicators_at_open=market,
+        )
+        # Store leverage in indicators for display
+        pos.indicators_at_open["leverage"] = leverage
+        await shared_state.open_position(pos)
+        shared_state._log("TRADE", f"🖐 Manuel {side.upper()} {symbol} @ ${price:.4f} | {leverage}x")
+        return {"ok": True, "action": "opened", "symbol": symbol, "side": side, "price": price, "qty": qty, "sl": sl, "tp": tp_levels}
 
     return app
 
