@@ -159,19 +159,19 @@ a{color:var(--g);text-decoration:none}
 /* ── MAIN LAYOUT ── */
 .workspace{position:relative;z-index:1;display:grid;
   grid-template-columns:1fr 1fr 1fr 300px;
-  grid-template-rows:180px 200px 280px 200px;
+  grid-template-rows:180px 200px 1fr 180px;
   gap:1px;background:var(--t3);
   height:calc(100vh - 100px);overflow:hidden}
 
 /* ── PANELS ── */
-.panel{background:var(--s1);display:flex;flex-direction:column;overflow:hidden}
+.panel{background:var(--s1);display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .ph{display:flex;align-items:center;justify-content:space-between;
   padding:.4rem .8rem;border-bottom:1px solid var(--b0);flex-shrink:0;min-height:30px}
 .ph-title{font-family:var(--head);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;
   color:var(--t2);display:flex;align-items:center;gap:.35rem}
 .ph-icon{color:var(--g);font-size:.75rem}
 .pb{flex:1;overflow:auto;padding:.5rem .8rem}
-.pb-np{flex:1;overflow:auto;padding:0}
+.pb-np{flex:1;overflow-y:auto;overflow-x:hidden;padding:0;min-height:0}
 .badge{font-size:.52rem;letter-spacing:.08em;padding:.12rem .4rem;border-radius:3px;font-weight:600}
 .bg{background:rgba(0,195,130,0.1);color:var(--g);border:1px solid rgba(0,195,130,0.25)}
 .bb{background:rgba(0,150,255,0.1);color:var(--b);border:1px solid rgba(0,150,255,0.25)}
@@ -187,6 +187,10 @@ a{color:var(--g);text-decoration:none}
 .s-positions{grid-column:1/3;grid-row:3/5}
 .s-history{grid-column:1;grid-row:4}
 .s-agents{grid-column:2;grid-row:4}
+/* positions panel internals */
+.s-positions{display:flex;flex-direction:column;overflow:hidden}
+.pos-panels-fixed{flex-shrink:0;display:flex;flex-direction:column}
+.pos-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
 
 /* ── PNL CHART ── */
 .chart-wrap{flex:1;padding:.3rem .8rem .5rem;overflow:hidden}
@@ -245,26 +249,26 @@ canvas#pc{width:100%!important;height:100%!important}
 .si-time{font-size:.55rem;color:var(--t3);margin-top:.2rem}
 
 /* ── POSITION CARDS ── */
-.pos-row{padding:.4rem .8rem;border-bottom:1px solid rgba(0,195,130,0.04);display:flex;flex-direction:column;gap:.3rem}
+.pos-row{padding:.5rem .8rem;border-bottom:1px solid rgba(0,195,130,0.07);display:flex;flex-direction:column;gap:.25rem;flex-shrink:0;box-sizing:border-box;width:100%}
 .pos-row:last-child{border-bottom:none}
 .pos-header{display:flex;align-items:center;justify-content:space-between}
 .pos-sym{font-family:var(--head);font-size:.85rem;font-weight:700;color:#fff}
 .pos-side{font-size:.52rem;font-weight:700;padding:.1rem .35rem;border-radius:3px}
 .ps-l{background:rgba(0,195,130,0.1);color:var(--g)}.ps-s{background:rgba(255,59,92,0.1);color:var(--r)}
-.pos-pnl{font-family:var(--head);font-size:.9rem;font-weight:700;font-variant-numeric:tabular-nums}
-.pos-meta{display:flex;gap:1rem;font-size:.6rem;color:var(--t2)}
+.pos-pnl{font-family:var(--head);font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums}
+.pos-meta{display:flex;gap:.6rem 1rem;font-size:.6rem;color:var(--t2);flex-wrap:wrap}
 .pos-meta span{display:flex;gap:.25rem;align-items:center}
 .pos-meta .lbl{color:var(--t3)}
-.sltp-bar{display:flex;align-items:center;gap:.5rem;font-size:.6rem}
-.sltp-sl{color:var(--r);min-width:55px}.sltp-tp{color:var(--g);text-align:right;min-width:55px}
-.sltp-track{flex:1;height:6px;background:var(--t3);border-radius:3px;position:relative;overflow:visible}
+.sltp-bar{display:flex;align-items:center;gap:.4rem;font-size:.6rem;flex-shrink:0;width:100%;box-sizing:border-box;min-width:0}
+.sltp-sl{color:var(--r);min-width:50px;flex-shrink:0;white-space:nowrap}.sltp-tp{color:var(--g);text-align:right;min-width:50px;flex-shrink:0;white-space:nowrap}
+.sltp-track{flex:1;height:6px;background:var(--t3);border-radius:3px;position:relative;overflow:hidden;min-width:0}
 .sltp-fill{height:100%;border-radius:3px;transition:width .5s ease;background:linear-gradient(90deg,var(--b),var(--g))}
 .sltp-pct{font-size:.55rem;color:var(--t2);min-width:30px;text-align:right}
 .pos-ai{font-size:.58rem;color:var(--t2);line-height:1.45;padding:.3rem .5rem;
   background:rgba(0,150,255,0.05);border-left:2px solid rgba(0,150,255,0.25);border-radius:0 3px 3px 0;margin-top:.15rem}
 .pos-ai-label{font-size:.52rem;color:var(--b);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.15rem}
-.pos-close-btn{font-size:.55rem;padding:.15rem .4rem;background:rgba(255,59,92,0.1);border:1px solid rgba(255,59,92,0.25);
-  color:var(--r);border-radius:3px;cursor:pointer;font-family:var(--mono)}
+.pos-close-btn{font-size:.6rem;padding:.15rem .4rem;background:rgba(255,59,92,0.1);border:1px solid rgba(255,59,92,0.25);
+  color:var(--r);border-radius:3px;cursor:pointer;font-family:var(--mono);flex-shrink:0}
 .pos-close-btn:hover{background:rgba(255,59,92,0.2)}
 
 /* ── TRADE HISTORY ── */
@@ -346,9 +350,9 @@ canvas#pc{width:100%!important;height:100%!important}
 .sent-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:.25rem}
 /* ── POS SUMMARY ── */
 .pos-summary-bar{display:flex;gap:.5rem;padding:.3rem .8rem;border-bottom:1px solid var(--b0);flex-shrink:0;font-size:.6rem;flex-wrap:wrap;align-items:center}
-.psb-item{display:flex;flex-direction:column;padding:.2rem .5rem;background:var(--s2);border-radius:4px;border:1px solid var(--b0);min-width:60px}
-.psb-lbl{font-size:.5rem;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.1rem}
-.psb-val{font-family:var(--head);font-size:.85rem;font-weight:700}
+.psb-item{display:flex;flex-direction:column;padding:.18rem .45rem;background:var(--s0);border-radius:3px;border:1px solid var(--b0);min-width:55px}
+.psb-lbl{font-size:.48rem;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.08rem}
+.psb-val{font-family:var(--head);font-size:.78rem;font-weight:700}
 /* ── SHIMMER ── */
 .shim{background:linear-gradient(90deg,var(--t3) 25%,rgba(0,195,130,0.05) 50%,var(--t3) 75%);background-size:200% 100%;animation:shim 1.5s infinite;border-radius:3px}
 @keyframes shim{from{background-position:-200% 0}to{background-position:200% 0}}
@@ -488,41 +492,45 @@ canvas#pc{width:100%!important;height:100%!important}
   </div>
 
   <!-- OPEN POSITIONS -->
-  <div class="panel s-positions">
-    <div class="ph">
-      <div class="ph-title"><span class="ph-icon">▣</span>AÇIK POZİSYONLAR</div>
-      <div style="display:flex;gap:.4rem;align-items:center">
-        <span class="badge by" id="pos-cnt">0 Aktif</span>
-        <button onclick="fetchPositions()" style="background:var(--s2);border:1px solid var(--b0);color:var(--t2);font-size:.55rem;padding:.15rem .4rem;border-radius:3px;cursor:pointer;font-family:var(--mono)">↻</button>
+  <div class="panel s-positions" style="display:flex;flex-direction:column;overflow:hidden">
+    <!-- SABİT KISIM: başlık + özet + sentiment -->
+    <div style="flex-shrink:0;display:flex;flex-direction:column;border-bottom:1px solid var(--b0)">
+      <div class="ph" style="border-bottom:none">
+        <div class="ph-title"><span class="ph-icon">▣</span>AÇIK POZİSYONLAR</div>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          <span class="badge by" id="pos-cnt">0 Aktif</span>
+          <button onclick="fetchPositions()" style="background:var(--s2);border:1px solid var(--b0);color:var(--t2);font-size:.55rem;padding:.15rem .4rem;border-radius:3px;cursor:pointer;font-family:var(--mono)">↻</button>
+        </div>
+      </div>
+      <!-- Özet barı -->
+      <div id="pos-summary" style="display:none;gap:.4rem;padding:.3rem .8rem;flex-wrap:wrap;align-items:center;border-top:1px solid var(--b0);background:var(--s2)">
+        <div class="psb-item"><div class="psb-lbl">Toplam PnL</div><div class="psb-val" id="psb-pnl">$0</div></div>
+        <div class="psb-item"><div class="psb-lbl">Büyüklük</div><div class="psb-val" id="psb-size" style="color:var(--y)">$0</div></div>
+        <div class="psb-item"><div class="psb-lbl">En İyi</div><div class="psb-val pos-g" id="psb-best">—</div></div>
+        <div class="psb-item"><div class="psb-lbl">En Kötü</div><div class="psb-val pos-r" id="psb-worst">—</div></div>
+        <div class="psb-item"><div class="psb-lbl">L/S</div><div class="psb-val" id="psb-ratio" style="color:var(--b)">0/0</div></div>
+      </div>
+      <!-- RSI Piyasa duygusu -->
+      <div style="padding:.35rem .8rem;border-top:1px solid var(--b0)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem">
+          <span style="font-size:.52rem;letter-spacing:.07em;text-transform:uppercase;color:var(--t2)">◈ PİYASA DUYGUSU</span>
+          <span style="font-size:.58rem;color:var(--t1);font-weight:600" id="sent-score">—</span>
+        </div>
+        <div style="display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--t3)">
+          <div id="sent-os" class="sent-seg" style="background:#00c382;width:0%"></div>
+          <div id="sent-n"  class="sent-seg" style="background:#2a4050;width:100%"></div>
+          <div id="sent-ob" class="sent-seg" style="background:#ff3b5c;width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:.18rem;font-size:.5rem;color:var(--t2)">
+          <span id="sent-os-lbl">🟢 Sat. 0</span>
+          <span id="sent-n-lbl">Nötr</span>
+          <span id="sent-ob-lbl">Al. 0 🔴</span>
+        </div>
       </div>
     </div>
-    <!-- Pozisyon özet barı -->
-    <div class="pos-summary-bar" id="pos-summary" style="display:none">
-      <div class="psb-item"><div class="psb-lbl">Toplam PnL</div><div class="psb-val" id="psb-pnl">$0</div></div>
-      <div class="psb-item"><div class="psb-lbl">Toplam Büyüklük</div><div class="psb-val" id="psb-size" style="color:var(--y)">$0</div></div>
-      <div class="psb-item"><div class="psb-lbl">En İyi</div><div class="psb-val pos-g" id="psb-best">—</div></div>
-      <div class="psb-item"><div class="psb-lbl">En Kötü</div><div class="psb-val pos-r" id="psb-worst">—</div></div>
-      <div class="psb-item"><div class="psb-lbl">L/S Oran</div><div class="psb-val" id="psb-ratio" style="color:var(--b)">0/0</div></div>
-    </div>
-    <!-- RSI Sentiment bar -->
-    <div class="sent-bar" id="sent-wrap" style="flex-direction:column;align-items:stretch;padding:.4rem .8rem">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem">
-        <span style="font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)">◈ PİYASA DUYGUSU (RSI Dağılımı)</span>
-        <span style="font-size:.58rem;color:var(--t1)" id="sent-score">—</span>
-      </div>
-      <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--t3)">
-        <div id="sent-os" class="sent-seg" style="background:#00c382;width:0%"></div>
-        <div id="sent-n"  class="sent-seg" style="background:#3a5060;width:100%"></div>
-        <div id="sent-ob" class="sent-seg" style="background:#ff3b5c;width:0%"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:.2rem;font-size:.52rem;color:var(--t2)">
-        <span id="sent-os-lbl">Aşırı Satım 0</span>
-        <span id="sent-n-lbl">Nötr</span>
-        <span id="sent-ob-lbl">Aşırı Alım 0</span>
-      </div>
-    </div>
-    <div class="pb-np" id="pos-body">
-      <div class="empty" style="height:80px"><div>Açık pozisyon yok</div></div>
+    <!-- SCROLL KISIM: pozisyon kartları -->
+    <div style="flex:1;overflow-y:auto;overflow-x:hidden;min-height:0" id="pos-body">
+      <div class="empty" style="height:100px"><div style="font-size:1.2rem">📭</div><div>Bot işlem arıyor...</div><div style="font-size:.55rem;color:var(--t3)">Strateji sinyalleri bekleniyor</div></div>
     </div>
   </div>
 
@@ -537,7 +545,7 @@ canvas#pc{width:100%!important;height:100%!important}
       <span style="color:var(--t2)">Kayıp: <span id="h-loss-pnl" style="color:var(--r)">$0</span></span>
       <span style="color:var(--t2)">Ort Süre: <span id="h-avg-dur" style="color:var(--b)">—</span></span>
     </div>
-    <div class="pb-np" id="hist-body">
+    <div style="flex:1;overflow-y:auto;overflow-x:hidden;min-height:0" id="hist-body">
       <div class="empty" style="height:80px"><div>Henüz işlem yok</div></div>
     </div>
   </div>
@@ -932,35 +940,43 @@ async function fetchPositions(){
       const posSize=(p.value_usd||0)*lev;
       const pnlBg=p.pnl>=0?'rgba(0,195,130,0.08)':'rgba(255,59,92,0.08)';
       const borderCol=p.pnl>=0?'var(--g)':'var(--r)';
-      return`<div class="pos-row" style="border-left:2px solid ${borderCol};padding-left:.7rem">
-        <div class="pos-header">
-          <div style="display:flex;align-items:center;gap:.4rem">
+      const durMs=Date.now()-new Date(p.opened_at).getTime();
+      const durStr=durMs>3600000?Math.floor(durMs/3600000)+'s':Math.floor(durMs/60000)+'d';
+      return`<div class="pos-row" style="border-left:3px solid ${borderCol}">
+        <!-- Satır 1: Sembol + PnL + Kapat -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;flex-wrap:nowrap">
+          <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0">
             <span class="pos-sym">${sym}</span>
             <span class="pos-side ${sideCls}">${p.side.toUpperCase()}</span>
-            <span style="font-size:.52rem;padding:.1rem .32rem;border-radius:3px;background:rgba(0,150,255,0.12);color:var(--b);border:1px solid rgba(0,150,255,0.3)">${lev}x</span>
+            <span style="font-size:.5rem;padding:.08rem .28rem;border-radius:3px;background:rgba(0,150,255,0.12);color:var(--b);border:1px solid rgba(0,150,255,0.28);flex-shrink:0">${lev}x</span>
+            <span style="font-size:.5rem;color:var(--t2);flex-shrink:0">⏱ ${durStr}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:.4rem">
-            <span class="pos-pnl ${pnlCls}" style="background:${pnlBg};padding:.15rem .5rem;border-radius:4px;font-size:.8rem">${p.pnl>=0?'+':''}$${(p.pnl||0).toFixed(4)} <span style="font-size:.65rem">(${p.pnl_pct>=0?'+':''}${(p.pnl_pct||0).toFixed(2)}%)</span></span>
-            <button class="pos-close-btn" onclick="closePos('${p.symbol}')">✕ KAPAT</button>
+          <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0">
+            <span class="pos-pnl ${pnlCls}" style="background:${pnlBg};padding:.12rem .45rem;border-radius:4px">${p.pnl>=0?'+':''}$${(p.pnl||0).toFixed(4)} <span style="opacity:.8">(${p.pnl_pct>=0?'+':''}${(p.pnl_pct||0).toFixed(2)}%)</span></span>
+            <button class="pos-close-btn" onclick="closePos('${p.symbol}')">✕</button>
           </div>
         </div>
-        <div class="pos-meta" style="flex-wrap:wrap;margin:.2rem 0">
-          <span><span class="lbl">Giriş</span>${fP(p.entry_price)}</span>
-          <span><span class="lbl">Anlık</span><span style="color:${(p.current_price||0)>=(p.entry_price||0)?'var(--g)':'var(--r)'}">${fP(p.current_price)}</span></span>
-          <span title="Pozisyon Büyüklüğü = Teminat × Kaldıraç"><span class="lbl">Pos. Büyüklük</span><span style="color:var(--y)">$${posSize.toFixed(2)}</span></span>
-          <span><span class="lbl">Teminat</span>$${(p.value_usd||0).toFixed(2)}</span>
-          <span><span class="lbl">Miktar</span>${(p.qty||0).toFixed(6)}</span>
-          <span><span class="lbl">Açıldı</span>${fT(p.opened_at)}</span>
+        <!-- Satır 2: Fiyat bilgileri kompakt -->
+        <div style="display:flex;gap:.5rem;font-size:.59rem;color:var(--t2);flex-wrap:wrap">
+          <span><span style="color:var(--t3)">Giriş</span> ${fP(p.entry_price)}</span>
+          <span><span style="color:var(--t3)">Anlık</span> <span style="color:${(p.current_price||0)>=(p.entry_price||0)?'var(--g)':'var(--r)'}">${fP(p.current_price)}</span></span>
+          <span><span style="color:var(--t3)">Teminat</span> $${(p.value_usd||0).toFixed(2)}</span>
+          <span title="Pozisyon Büyüklüğü"><span style="color:var(--t3)">Büyüklük</span> <span style="color:var(--y)">$${posSize.toFixed(2)}</span></span>
+          <span><span style="color:var(--t3)">Miktar</span> ${(p.qty||0).toFixed(5)}</span>
         </div>
-        <div class="sltp-bar">
-          <span class="sltp-sl">🛑 ${fP(p.stop_loss)}</span>
-          <div class="sltp-track"><div class="sltp-fill" style="width:${prog}%"></div></div>
-          <span class="sltp-pct">${prog.toFixed(0)}%</span>
-          <span class="sltp-tp">🎯 ${fP(p.take_profit)}${p.take_profit_levels&&p.take_profit_levels.length>1?' ('+(p.tp_hit_count+1)+'/'+p.take_profit_levels.length+')':''}</span>
+        <!-- Satır 3: SL/TP progress bar -->
+        <div style="display:flex;align-items:center;gap:.35rem;font-size:.58rem;width:100%;box-sizing:border-box">
+          <span style="color:var(--r);flex-shrink:0;white-space:nowrap">🛑 ${fP(p.stop_loss)}</span>
+          <div style="flex:1;height:5px;background:var(--t3);border-radius:3px;overflow:hidden;min-width:0">
+            <div style="height:100%;width:${prog}%;background:linear-gradient(90deg,var(--b),var(--g));border-radius:3px;transition:width .5s"></div>
+          </div>
+          <span style="color:var(--t2);flex-shrink:0;min-width:28px;text-align:center">${prog.toFixed(0)}%</span>
+          <span style="color:var(--g);flex-shrink:0;white-space:nowrap">🎯 ${fP(p.take_profit)}${p.take_profit_levels&&p.take_profit_levels.length>1?' '+(p.tp_hit_count+1)+'/'+p.take_profit_levels.length:''}</span>
         </div>
-        ${p.take_profit_levels&&p.take_profit_levels.length>1?`<div style="display:flex;gap:.28rem;padding:.2rem 0;flex-wrap:wrap">${p.take_profit_levels.map((t,i)=>`<span style="font-size:.54rem;padding:.12rem .38rem;border-radius:3px;background:${i<p.tp_hit_count?'rgba(0,195,130,0.2)':'rgba(0,195,130,0.05)'};color:${i<p.tp_hit_count?'var(--g)':'var(--t1)'};border:1px solid rgba(0,195,130,${i<p.tp_hit_count?'0.4':'0.12'})">${i<p.tp_hit_count?'✓ ':''}TP${i+1} ${fP(t)}</span>`).join('')}</div>`:''}
-        ${p.ai_summary?`<div class="pos-ai"><div class="pos-ai-label">⬡ AI Özeti</div>${p.ai_summary}</div>`:''}
-        ${p.reason?`<div style="font-size:.57rem;color:var(--t2);padding-top:.12rem">📍 ${p.reason}</div>`:''}
+        <!-- Satır 4: TP seviyeleri (sadece çoklu TP ise) -->
+        ${p.take_profit_levels&&p.take_profit_levels.length>1?`<div style="display:flex;gap:.22rem;flex-wrap:wrap">${p.take_profit_levels.map((t,i)=>`<span style="font-size:.52rem;padding:.1rem .32rem;border-radius:3px;background:${i<p.tp_hit_count?'rgba(0,195,130,0.18)':'rgba(0,195,130,0.05)'};color:${i<p.tp_hit_count?'var(--g)':'var(--t2)'};border:1px solid rgba(0,195,130,${i<p.tp_hit_count?'0.4':'0.1'})">${i<p.tp_hit_count?'✓':i===p.tp_hit_count?'▶':'○'} TP${i+1} ${fP(t)}</span>`).join('')}</div>`:''}
+        <!-- Satır 5: AI özeti kompakt, tek satır overflow hidden -->
+        ${p.ai_summary?`<div style="font-size:.56rem;color:var(--t2);background:rgba(0,150,255,0.04);border-left:2px solid rgba(0,150,255,0.2);padding:.2rem .4rem;border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.ai_summary}">⬡ ${p.ai_summary}</div>`:''}
       </div>`;
     }).join('');
   }catch(e){console.warn('positions',e)}
@@ -1042,7 +1058,7 @@ function updateSentiment(){
 function updatePosSummary(open){
   const summaryEl=document.getElementById('pos-summary');
   if(!open.length){summaryEl.style.display='none';return;}
-  summaryEl.style.display='flex';
+  summaryEl.style.display='flex';summaryEl.style.flexWrap='wrap';
   const totalPnl=open.reduce((s,p)=>s+(p.pnl||0),0);
   const totalSize=open.reduce((s,p)=>s+(p.value_usd||0)*(p.leverage||1),0);
   const longs=open.filter(p=>p.side==='long').length;
