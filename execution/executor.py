@@ -1,23 +1,13 @@
 """
-Execution Agent - Emir Uygulayıcı
-
-Modlar:
-- PAPER_TRADING=true (varsayılan): Gerçek emir vermez, simüle eder
-- PAPER_TRADING=false + BINANCE_API_KEY/SECRET: Binance spot emirleri
-
-Özellikler:
-- Sinyal filtresi (min. güven eşiği)
-- Pozisyon boyutlandırma (risk % portföy)
-- Stop-loss / take-profit takibi
-- Duplicate sinyal önleme
+Execution Agent — Gelişmiş Emir Uygulayıcı
+- SL/TP ile pozisyon açma
+- AI özet üretimi
+- Açılış sebebi loglama
+- Bot pause/stop kontrolü
 """
 import asyncio
 import os
-import aiohttp
-import hmac
-import hashlib
 import time
-from urllib.parse import urlencode
 from datetime import datetime
 
 from utils.state import SharedState, Position
@@ -25,149 +15,157 @@ from utils.logger import setup_logger
 
 logger = setup_logger("ExecutionAgent")
 
-INTERVAL        = int(os.getenv("EXEC_INTERVAL", "10"))
-PAPER_TRADING   = os.getenv("PAPER_TRADING", "true").lower() == "true"
-BINANCE_KEY     = os.getenv("BINANCE_API_KEY", "")
-BINANCE_SECRET  = os.getenv("BINANCE_API_SECRET", "")
-PORTFOLIO_USD   = float(os.getenv("PORTFOLIO_USD", "1000"))
-RISK_PCT        = float(os.getenv("RISK_PCT", "0.02"))  # Her işlemde portföyün %2'si
-STOP_LOSS_PCT   = float(os.getenv("STOP_LOSS_PCT", "0.03"))
-TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "0.06"))
+INITIAL_CAPITAL = 1000.0
 
-# CoinGecko sembol → Binance çifti eşlemesi
-SYMBOL_MAP = {
-    "bitcoin":     "BTCUSDT",
-    "ethereum":    "ETHUSDT",
-    "solana":      "SOLUSDT",
-    "binancecoin": "BNBUSDT",
-    "ripple":      "XRPUSDT",
-}
+# AI özetleri üretir (gerçek AI API'si olmadan kural tabanlı)
+def generate_ai_summary(symbol: str, direction: str, indicators: dict, strategy: str) -> tuple:
+    """(reason, ai_summary) döndürür"""
+    rsi = indicators.get("rsi", 50)
+    macd = indicators.get("macd", 0)
+    macd_sig = indicators.get("macd_signal", 0)
+    bb_lower = indicators.get("bb_lower", 0)
+    bb_upper = indicators.get("bb_upper", 0)
+    price = indicators.get("price", 0)
+    change = indicators.get("change_24h", 0)
+    mom = indicators.get("momentum_1m", 0)
+
+    reasons = []
+    summary_parts = []
+
+    if direction == "buy":
+        if rsi < 30:
+            reasons.append(f"RSI aşırı satım ({rsi:.1f})")
+            summary_parts.append(f"RSI {rsi:.1f} ile güçlü aşırı satım sinyali — geri dönüş beklentisi")
+        elif rsi < 40:
+            reasons.append(f"RSI düşük ({rsi:.1f})")
+            summary_parts.append(f"RSI {rsi:.1f} ile satım bölgesine yakın")
+        if macd > macd_sig and macd > 0:
+            reasons.append("MACD yukarı kesiş")
+            summary_parts.append(f"MACD ({macd:.5f}) sinyal üzerinde — yukarı momentum doğrulandı")
+        if bb_lower > 0 and price < bb_lower * 1.01:
+            reasons.append("Bollinger alt bandı kırılımı")
+            summary_parts.append("Fiyat Bollinger alt bandının altında — dip alım fırsatı")
+        if change > 2:
+            reasons.append(f"24s güçlü artış ({change:+.1f}%)")
+        if mom > 0.1:
+            summary_parts.append(f"Kısa vadeli momentum pozitif ({mom:+.3f}%)")
+
+    elif direction == "sell":
+        if rsi > 70:
+            reasons.append(f"RSI aşırı alım ({rsi:.1f})")
+            summary_parts.append(f"RSI {rsi:.1f} ile güçlü aşırı alım sinyali — düzeltme beklentisi")
+        elif rsi > 60:
+            reasons.append(f"RSI yüksek ({rsi:.1f})")
+        if macd < macd_sig and macd < 0:
+            reasons.append("MACD aşağı kesiş")
+            summary_parts.append(f"MACD ({macd:.5f}) sinyal altında — aşağı momentum")
+        if bb_upper > 0 and price > bb_upper * 0.99:
+            reasons.append("Bollinger üst bandı kırılımı")
+            summary_parts.append("Fiyat Bollinger üst bandının üzerinde — zirve satış fırsatı")
+        if change < -2:
+            reasons.append(f"24s güçlü düşüş ({change:+.1f}%)")
+
+    reason_str = " | ".join(reasons) if reasons else f"{strategy} sinyali"
+    ai_str = ". ".join(summary_parts) if summary_parts else f"{strategy} stratejisi {direction} sinyali üretti"
+    ai_str += f". Strateji: {strategy}. Güven: hesaplandı."
+
+    return reason_str, ai_str
 
 
 class ExecutionAgent:
     def __init__(self, state: SharedState):
         self.state = state
         self.processed_signals: set = set()
-        self.paper_pnl = 0.0
-        self.mode = "PAPER" if PAPER_TRADING else "LIVE"
+        self.mode = "PAPER"
 
     def _position_size(self, price: float) -> float:
-        """Risk yüzdesiyle pozisyon büyüklüğü hesapla"""
-        risk_usd = PORTFOLIO_USD * RISK_PCT
-        return round(risk_usd / price, 6)
+        risk_usd = INITIAL_CAPITAL * self.state.settings.risk_pct
+        return round(risk_usd / price, 8)
 
-    async def _paper_execute(self, symbol: str, direction: str, price: float):
-        """Kağıt üzerinde işlem simülasyonu"""
-        qty = self._position_size(price)
+    async def _paper_execute(self, symbol: str, direction: str, price: float,
+                              signal_reason: str, indicators: dict, strategy: str):
+        sl_pct = self.state.settings.stop_loss_pct
+        tp_pct = self.state.settings.take_profit_pct
+
         if direction == "buy":
             if symbol not in self.state.positions:
+                if len(self.state.positions) >= self.state.settings.max_positions:
+                    return
+                qty = self._position_size(price)
+                sl = round(price * (1 - sl_pct), 8)
+                tp = round(price * (1 + tp_pct), 8)
+                reason, ai_summary = generate_ai_summary(symbol, direction, indicators, strategy)
                 pos = Position(
                     symbol=symbol, side="long", qty=qty,
-                    entry_price=price, current_price=price
+                    entry_price=price, current_price=price,
+                    stop_loss=sl, take_profit=tp,
+                    value_usd=round(qty * price, 4),
+                    reason=reason, ai_summary=ai_summary,
+                    indicators_at_open=indicators,
                 )
                 await self.state.open_position(pos)
-                logger.info(
-                    f"📝 [PAPER] BUY  {symbol} | qty={qty} | price=${price:,.4f} | "
-                    f"cost=${qty * price:.2f}"
-                )
+                logger.info(f"📝 [PAPER] LONG {symbol} @ ${price:.4f} | SL:${sl:.4f} TP:${tp:.4f}")
+
         elif direction == "sell":
             if symbol in self.state.positions:
-                pnl = await self.state.close_position(symbol, price)
-                logger.info(
-                    f"📝 [PAPER] SELL {symbol} | price=${price:,.4f} | "
-                    f"PnL=${pnl:+.4f}"
-                )
-
-    async def _binance_execute(self, symbol: str, direction: str, qty: float, session: aiohttp.ClientSession):
-        """Gerçek Binance spot emri"""
-        binance_sym = SYMBOL_MAP.get(symbol)
-        if not binance_sym:
-            logger.warning(f"Binance eşlemesi bulunamadı: {symbol}")
-            return
-
-        side = "BUY" if direction == "buy" else "SELL"
-        params = {
-            "symbol": binance_sym,
-            "side": side,
-            "type": "MARKET",
-            "quantity": qty,
-            "timestamp": int(time.time() * 1000),
-            "recvWindow": 5000,
-        }
-        query = urlencode(params)
-        signature = hmac.new(BINANCE_SECRET.encode(), query.encode(), hashlib.sha256).hexdigest()
-        params["signature"] = signature
-
-        headers = {"X-MBX-APIKEY": BINANCE_KEY}
-        try:
-            url = "https://api.binance.com/api/v3/order"
-            async with session.post(url, params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as r:
-                resp = await r.json()
-                if r.status == 200:
-                    logger.info(f"✅ [LIVE] {side} {binance_sym} | orderId={resp.get('orderId')}")
-                else:
-                    logger.error(f"❌ Binance hata: {resp}")
-        except Exception as e:
-            logger.error(f"Binance bağlantı hatası: {e}")
+                pnl = await self.state.close_position(symbol, price, "SIGNAL")
+                logger.info(f"📝 [PAPER] CLOSE {symbol} @ ${price:.4f} | PnL=${pnl:+.4f}")
 
     async def _check_stop_take(self):
-        """Açık pozisyonlar için stop-loss / take-profit kontrol et"""
         for symbol, pos in list(self.state.positions.items()):
             market = self.state.market_data.get(symbol, {})
-            cur_price = market.get("price", 0)
-            if cur_price == 0:
+            cur = market.get("price", 0)
+            if cur <= 0:
                 continue
-
-            pos.current_price = cur_price
-            change = (cur_price - pos.entry_price) / pos.entry_price
+            pos.current_price = cur
+            pos.pnl = (cur - pos.entry_price) * pos.qty
+            pos.pnl_pct = (pos.pnl / pos.value_usd * 100) if pos.value_usd else 0
 
             if pos.side == "long":
-                if change <= -STOP_LOSS_PCT:
-                    pnl = await self.state.close_position(symbol, cur_price)
-                    logger.warning(f"🛑 STOP-LOSS {symbol} | change={change:.2%} | PnL=${pnl:+.2f}")
-                elif change >= TAKE_PROFIT_PCT:
-                    pnl = await self.state.close_position(symbol, cur_price)
-                    logger.info(f"🎯 TAKE-PROFIT {symbol} | change={change:.2%} | PnL=${pnl:+.2f}")
+                if cur <= pos.stop_loss:
+                    pnl = await self.state.close_position(symbol, cur, "SL")
+                    logger.warning(f"🛑 SL HIT {symbol} @ ${cur:.4f} | PnL=${pnl:+.4f}")
+                elif cur >= pos.take_profit:
+                    pnl = await self.state.close_position(symbol, cur, "TP")
+                    logger.info(f"🎯 TP HIT {symbol} @ ${cur:.4f} | PnL=${pnl:+.4f}")
 
     async def run(self, shutdown: asyncio.Event):
-        logger.info(f"⚡ Execution Agent başlatıldı | Mod: {self.mode}")
-        if not PAPER_TRADING:
-            if not BINANCE_KEY or not BINANCE_SECRET:
-                logger.error("❌ LIVE mod ama BINANCE_API_KEY/SECRET ayarlanmamış! PAPER moduna geçiliyor.")
+        logger.info(f"⚡ Execution Agent başlatıldı | Mod: {self.mode} | Sermaye: ${INITIAL_CAPITAL}")
+        while not shutdown.is_set():
+            try:
+                # Bot durdurulmuşsa veya duraklatılmışsa işlem yapma
+                if not self.state.bot_running or self.state.bot_paused:
+                    await asyncio.sleep(2)
+                    continue
 
-        async with aiohttp.ClientSession() as session:
-            while not shutdown.is_set():
-                try:
-                    await self._check_stop_take()
+                await self._check_stop_take()
 
-                    signals = await self.state.get_signals()
-                    for sig in signals:
-                        sig_id = f"{sig.symbol}_{sig.direction}_{sig.timestamp.strftime('%H%M')}"
-                        if sig_id in self.processed_signals:
-                            continue
-                        self.processed_signals.add(sig_id)
+                signals = await self.state.get_signals()
+                for sig in signals:
+                    sig_id = f"{sig.symbol}_{sig.direction}_{sig.timestamp.strftime('%H%M%S')}"
+                    if sig_id in self.processed_signals:
+                        continue
+                    self.processed_signals.add(sig_id)
 
-                        if sig.confidence < float(os.getenv("MIN_CONFIDENCE", "0.55")):
-                            continue
+                    if sig.confidence < self.state.settings.min_confidence:
+                        continue
 
-                        market = self.state.market_data.get(sig.symbol, {})
-                        price = market.get("price", 0)
-                        if price <= 0:
-                            continue
+                    market = self.state.market_data.get(sig.symbol, {})
+                    price = market.get("price", 0)
+                    if price <= 0:
+                        continue
 
-                        if PAPER_TRADING:
-                            await self._paper_execute(sig.symbol, sig.direction, price)
-                        else:
-                            qty = self._position_size(price)
-                            await self._binance_execute(sig.symbol, sig.direction, qty, session)
+                    await self._paper_execute(
+                        sig.symbol, sig.direction, price,
+                        sig.reason, market, sig.strategy
+                    )
 
-                    # İşlenmiş sinyal kümesini temizle (bellek yönetimi)
-                    if len(self.processed_signals) > 500:
-                        self.processed_signals = set(list(self.processed_signals)[-200:])
+                if len(self.processed_signals) > 500:
+                    self.processed_signals = set(list(self.processed_signals)[-200:])
 
-                    await self.state.heartbeat("ExecutionAgent")
+                await self.state.heartbeat("ExecutionAgent")
 
-                except Exception as e:
-                    logger.error(f"Execution hatası: {e}", exc_info=True)
+            except Exception as e:
+                logger.error(f"Execution hatası: {e}", exc_info=True)
 
-                await asyncio.sleep(INTERVAL)
+            await asyncio.sleep(self.state.settings.exec_interval)
