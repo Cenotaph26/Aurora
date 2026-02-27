@@ -82,146 +82,6 @@ def run_agents():
 #  FASTAPI UYGULAMASI
 # ─────────────────────────────────────────────────────────────────────────────
 
-def create_app():
-    from fastapi import FastAPI, Request
-    from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import HTMLResponse
-    from datetime import datetime
-
-    app = FastAPI(title="Aurora AI Pro Terminal", version="3.0.0")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-    @app.get("/", response_class=HTMLResponse)
-    def root():
-        return DASHBOARD_HTML
-
-    @app.get("/health")
-    def health():
-        return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
-
-    @app.get("/status")
-    def status():
-        s = shared_state.get_summary()
-        return {"status": "running", **s, "rl_metrics": shared_state.rl_metrics}
-
-    @app.get("/market")
-    def market():
-        return {"symbols": shared_state.market_data}
-
-    @app.get("/signals")
-    def signals():
-        sigs = shared_state.signals[-30:]
-        return {"count": len(sigs), "signals": [
-            {"symbol": s.symbol, "direction": s.direction,
-             "confidence": s.confidence, "strategy": s.strategy,
-             "reason": s.reason, "timestamp": s.timestamp.isoformat()}
-            for s in reversed(sigs)
-        ]}
-
-    @app.get("/positions")
-    def positions():
-        return {"open": shared_state.get_positions_detail()}
-
-    @app.get("/positions/closed")
-    def closed_positions():
-        return {"closed": shared_state.get_closed_positions()}
-
-    @app.get("/metrics")
-    def metrics():
-        return shared_state.rl_metrics
-
-    @app.get("/log")
-    def syslog():
-        with shared_state._lock:
-            return {"log": list(reversed(shared_state.system_log[-100:]))}
-
-    @app.get("/settings")
-    def get_settings():
-        return shared_state.settings.to_dict()
-
-    @app.post("/settings")
-    async def update_settings(req: Request):
-        data = await req.json()
-        shared_state.settings.update(data)
-        with shared_state._lock:
-            shared_state.system_log.append({
-                "ts": datetime.utcnow().isoformat(), "level": "INFO",
-                "msg": f"Ayarlar guncellendi: {list(data.keys())}"
-            })
-        return {"ok": True, "settings": shared_state.settings.to_dict()}
-
-    @app.post("/bot/start")
-    def bot_start():
-        shared_state.start_bot()
-        return {"status": "started"}
-
-    @app.post("/bot/stop")
-    def bot_stop():
-        shared_state.stop_bot()
-        return {"status": "stopped"}
-
-    @app.post("/bot/pause")
-    def bot_pause():
-        shared_state.pause_bot()
-        return {"status": "paused" if shared_state.bot_paused else "resumed"}
-
-    @app.post("/positions/close/{symbol}")
-    async def close_pos(symbol: str):
-        market = shared_state.market_data.get(symbol, {})
-        price = market.get("price", 0)
-        if price <= 0:
-            return {"error": "Fiyat verisi yok"}
-        pnl = await shared_state.close_position(symbol, price, "MANUAL")
-        return {"ok": True, "pnl": pnl}
-
-    return app
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  GİRİŞ NOKTASI
-# ─────────────────────────────────────────────────────────────────────────────
-
-def handle_signal(sig, frame):
-    logger.warning(f"Kapatılıyor (signal {sig})...")
-    shutdown_event.set()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    signal.signal(signal.SIGTERM, handle_signal)
-    signal.signal(signal.SIGINT, handle_signal)
-
-    # Railway $PORT inject eder — MUTLAKA kullan
-    PORT = int(os.getenv("PORT", "8000"))
-
-    # ÖNEMLİ: Port'u logla — Railway'de doğrulama için
-    logger.info(f"🚀 Aurora AI Hedge Fund başlatılıyor...")
-    logger.info(f"🌐 PORT={PORT} (env: {os.getenv('PORT', 'YOK — varsayılan 8000')})")
-
-    # Ajanları arka thread'de başlat
-    agent_thread = threading.Thread(target=run_agents, name="AgentThread", daemon=True)
-    agent_thread.start()
-    logger.info("✅ Agent thread başlatıldı")
-
-    app = create_app()
-
-    # uvicorn DOĞRUDAN ana thread'de çalışır
-    # Railway bu process'in 0.0.0.0:{PORT} dinlediğini görür
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=PORT,
-        log_level="info",       # "info" — Railway'in port detection'ı için
-        proxy_headers=True,
-        forwarded_allow_ips="*",
-        access_log=True,        # HTTP logları aktif — debug için
-    )
-
-    shutdown_event.set()
-    agent_thread.join(timeout=10)
-    logger.info("✅ Kapatma tamamlandı.")
-
 # ─────────────────────────────────────────────────────────────────────────────
 #  DASHBOARD HTML (Pro Trading Terminal)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1003,6 +863,146 @@ setInterval(refresh,5000);
 </script>
 </body>
 </html>"""
+
+def create_app():
+    from fastapi import FastAPI, Request
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import HTMLResponse
+    from datetime import datetime
+
+    app = FastAPI(title="Aurora AI Pro Terminal", version="3.0.0")
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+    @app.get("/", response_class=HTMLResponse)
+    def root():
+        return DASHBOARD_HTML
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+    @app.get("/status")
+    def status():
+        s = shared_state.get_summary()
+        return {"status": "running", **s, "rl_metrics": shared_state.rl_metrics}
+
+    @app.get("/market")
+    def market():
+        return {"symbols": shared_state.market_data}
+
+    @app.get("/signals")
+    def signals():
+        sigs = shared_state.signals[-30:]
+        return {"count": len(sigs), "signals": [
+            {"symbol": s.symbol, "direction": s.direction,
+             "confidence": s.confidence, "strategy": s.strategy,
+             "reason": s.reason, "timestamp": s.timestamp.isoformat()}
+            for s in reversed(sigs)
+        ]}
+
+    @app.get("/positions")
+    def positions():
+        return {"open": shared_state.get_positions_detail()}
+
+    @app.get("/positions/closed")
+    def closed_positions():
+        return {"closed": shared_state.get_closed_positions()}
+
+    @app.get("/metrics")
+    def metrics():
+        return shared_state.rl_metrics
+
+    @app.get("/log")
+    def syslog():
+        with shared_state._lock:
+            return {"log": list(reversed(shared_state.system_log[-100:]))}
+
+    @app.get("/settings")
+    def get_settings():
+        return shared_state.settings.to_dict()
+
+    @app.post("/settings")
+    async def update_settings(req: Request):
+        data = await req.json()
+        shared_state.settings.update(data)
+        with shared_state._lock:
+            shared_state.system_log.append({
+                "ts": datetime.utcnow().isoformat(), "level": "INFO",
+                "msg": f"Ayarlar guncellendi: {list(data.keys())}"
+            })
+        return {"ok": True, "settings": shared_state.settings.to_dict()}
+
+    @app.post("/bot/start")
+    def bot_start():
+        shared_state.start_bot()
+        return {"status": "started"}
+
+    @app.post("/bot/stop")
+    def bot_stop():
+        shared_state.stop_bot()
+        return {"status": "stopped"}
+
+    @app.post("/bot/pause")
+    def bot_pause():
+        shared_state.pause_bot()
+        return {"status": "paused" if shared_state.bot_paused else "resumed"}
+
+    @app.post("/positions/close/{symbol}")
+    async def close_pos(symbol: str):
+        market = shared_state.market_data.get(symbol, {})
+        price = market.get("price", 0)
+        if price <= 0:
+            return {"error": "Fiyat verisi yok"}
+        pnl = await shared_state.close_position(symbol, price, "MANUAL")
+        return {"ok": True, "pnl": pnl}
+
+    return app
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  GİRİŞ NOKTASI
+# ─────────────────────────────────────────────────────────────────────────────
+
+def handle_signal(sig, frame):
+    logger.warning(f"Kapatılıyor (signal {sig})...")
+    shutdown_event.set()
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+
+    # Railway $PORT inject eder — MUTLAKA kullan
+    PORT = int(os.getenv("PORT", "8000"))
+
+    # ÖNEMLİ: Port'u logla — Railway'de doğrulama için
+    logger.info(f"🚀 Aurora AI Hedge Fund başlatılıyor...")
+    logger.info(f"🌐 PORT={PORT} (env: {os.getenv('PORT', 'YOK — varsayılan 8000')})")
+
+    # Ajanları arka thread'de başlat
+    agent_thread = threading.Thread(target=run_agents, name="AgentThread", daemon=True)
+    agent_thread.start()
+    logger.info("✅ Agent thread başlatıldı")
+
+    app = create_app()
+
+    # uvicorn DOĞRUDAN ana thread'de çalışır
+    # Railway bu process'in 0.0.0.0:{PORT} dinlediğini görür
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=PORT,
+        log_level="info",       # "info" — Railway'in port detection'ı için
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+        access_log=True,        # HTTP logları aktif — debug için
+    )
+
+    shutdown_event.set()
+    agent_thread.join(timeout=10)
+    logger.info("✅ Kapatma tamamlandı.")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  GİRİŞ NOKTASI
