@@ -1,14 +1,13 @@
 """
-Market Agent - Piyasa veri toplayıcısı
-- CoinGecko ücretsiz API'sinden fiyat/hacim verisi çeker
+Market Agent - Binance Futures veri toplayıcısı
+- Binance Futures'dan tüm USDT perpetual coinleri çeker
 - Teknik indikatörler hesaplar (RSI, MACD, Bollinger Bands)
-- Binance entegrasyonu: BINANCE_API_KEY env var varsa aktif olur
 """
 import asyncio
 import aiohttp
 import os
 from collections import deque
-from typing import Deque, Dict
+from typing import Deque, Dict, List
 from datetime import datetime
 
 from utils.state import SharedState
@@ -16,10 +15,9 @@ from utils.logger import setup_logger
 
 logger = setup_logger("MarketAgent")
 
-SYMBOLS = os.getenv("WATCH_SYMBOLS", "bitcoin,ethereum,solana,binancecoin,ripple").split(",")
-INTERVAL = int(os.getenv("MARKET_INTERVAL", "15"))  # saniye
-
-COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price"
+INTERVAL = int(os.getenv("MARKET_INTERVAL", "30"))
+BINANCE_FUTURES_BASE = "https://fapi.binance.com"
+MAX_COINS = int(os.getenv("MAX_COINS", "0"))  # 0 = hepsi
 
 
 def calc_rsi(prices: list, period: int = 14) -> float:
@@ -70,33 +68,89 @@ def calc_bollinger(prices: list, period: int = 20):
 class MarketAgent:
     def __init__(self, state: SharedState):
         self.state = state
-        self.price_history: Dict[str, Deque] = {s: deque(maxlen=200) for s in SYMBOLS}
+        self.price_history: Dict[str, Deque] = {}
         self.prev_prices: Dict[str, float] = {}
+        self.symbols: List[str] = []
 
-    async def fetch_prices(self, session: aiohttp.ClientSession) -> dict:
+    async def fetch_all_symbols(self, session: aiohttp.ClientSession) -> List[str]:
         try:
-            params = {
-                "ids": ",".join(SYMBOLS),
-                "vs_currencies": "usd",
-                "include_24hr_vol": "true",
-                "include_24hr_change": "true",
-                "include_market_cap": "true",
-            }
-            async with session.get(COINGECKO_URL, params=params, timeout=aiohttp.ClientTimeout(total=10)) as r:
+            url = f"{BINANCE_FUTURES_BASE}/fapi/v1/exchangeInfo"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
                 if r.status == 200:
-                    return await r.json()
+                    data = await r.json()
+                    symbols = [
+                        s["symbol"] for s in data.get("symbols", [])
+                        if s.get("quoteAsset") == "USDT"
+                        and s.get("contractType") == "PERPETUAL"
+                        and s.get("status") == "TRADING"
+                    ]
+                    if MAX_COINS > 0:
+                        symbols = symbols[:MAX_COINS]
+                    logger.info(f"📡 {len(symbols)} USDT Perpetual sembol bulundu")
+                    return symbols
         except Exception as e:
-            logger.warning(f"Fiyat çekme hatası: {e}")
+            logger.warning(f"Sembol listesi alınamadı: {e}")
+        return []
+
+    async def fetch_ticker_batch(self, session: aiohttp.ClientSession) -> dict:
+        try:
+            url = f"{BINANCE_FUTURES_BASE}/fapi/v1/ticker/24hr"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
+                if r.status == 200:
+                    tickers = await r.json()
+                    return {t["symbol"]: t for t in tickers}
+        except Exception as e:
+            logger.warning(f"Ticker çekme hatası: {e}")
         return {}
 
+    async def fetch_klines(self, session: aiohttp.ClientSession, symbol: str, limit: int = 50) -> list:
+        try:
+            url = f"{BINANCE_FUTURES_BASE}/fapi/v1/klines"
+            params = {"symbol": symbol, "interval": "1m", "limit": limit}
+            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as r:
+                if r.status == 200:
+                    klines = await r.json()
+                    return [float(k[4]) for k in klines]
+        except Exception:
+            pass
+        return []
+
     async def run(self, shutdown: asyncio.Event):
-        logger.info(f"📡 Market Agent başlatıldı | Semboller: {SYMBOLS}")
+        logger.info("📡 Market Agent başlatıldı | Binance Futures USDT Perpetual")
         async with aiohttp.ClientSession() as session:
+            self.symbols = await self.fetch_all_symbols(session)
+            if not self.symbols:
+                logger.error("Sembol listesi boş! Varsayılan listeye dönülüyor.")
+                self.symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+
+            for sym in self.symbols:
+                if sym not in self.price_history:
+                    self.price_history[sym] = deque(maxlen=200)
+
+            # Geçmiş fiyat verileri - batch olarak yükle
+            logger.info("📊 Geçmiş fiyat verileri yükleniyor...")
+            batch_size = 20
+            for i in range(0, min(len(self.symbols), 100), batch_size):
+                batch = self.symbols[i:i+batch_size]
+                tasks = [self.fetch_klines(session, sym, 50) for sym in batch]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for sym, closes in zip(batch, results):
+                    if isinstance(closes, list) and closes:
+                        for c in closes:
+                            self.price_history[sym].append(c)
+                await asyncio.sleep(0.5)
+
+            logger.info(f"✅ Geçmiş veriler yüklendi | {len(self.symbols)} sembol aktif")
+
             while not shutdown.is_set():
                 try:
-                    raw = await self.fetch_prices(session)
-                    for symbol, data in raw.items():
-                        price = data.get("usd", 0)
+                    ticker_map = await self.fetch_ticker_batch(session)
+                    updated = 0
+                    for symbol in self.symbols:
+                        t = ticker_map.get(symbol)
+                        if not t:
+                            continue
+                        price = float(t.get("lastPrice", 0))
                         if price <= 0:
                             continue
 
@@ -112,9 +166,10 @@ class MarketAgent:
 
                         await self.state.update_market(symbol, {
                             "price": price,
-                            "volume_24h": data.get("usd_24h_vol", 0),
-                            "change_24h": data.get("usd_24h_change", 0),
-                            "market_cap": data.get("usd_market_cap", 0),
+                            "volume_24h": float(t.get("quoteVolume", 0)),
+                            "change_24h": float(t.get("priceChangePercent", 0)),
+                            "high_24h": float(t.get("highPrice", 0)),
+                            "low_24h": float(t.get("lowPrice", 0)),
                             "rsi": rsi,
                             "macd": macd,
                             "macd_signal": macd_sig,
@@ -125,8 +180,9 @@ class MarketAgent:
                             "history_len": len(prices),
                         })
                         self.prev_prices[symbol] = price
+                        updated += 1
 
-                    logger.debug(f"✅ {len(raw)} sembol güncellendi")
+                    logger.debug(f"✅ {updated} sembol güncellendi")
                     await self.state.heartbeat("MarketAgent")
 
                 except Exception as e:
