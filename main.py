@@ -373,12 +373,15 @@ canvas#pc{width:100%!important;height:100%!important}
   <div class="top-kpis">
     <div class="tkpi"><div class="tkpi-l">Sermaye</div><div class="tkpi-v" id="k-cap">$1,000</div></div>
     <div class="tkpi"><div class="tkpi-l">Equity</div><div class="tkpi-v" id="k-eq">$1,000</div></div>
-    <div class="tkpi"><div class="tkpi-l">Toplam PnL</div><div class="tkpi-v" id="k-pnl">$0.00</div></div>
+    <div class="tkpi"><div class="tkpi-l">Realized PnL</div><div class="tkpi-v" id="k-pnl">$0.00</div></div>
     <div class="tkpi"><div class="tkpi-l">Getiri</div><div class="tkpi-v" id="k-ret">0.00%</div></div>
     <div class="tkpi"><div class="tkpi-l">Win Rate</div><div class="tkpi-v b" id="k-wr">0%</div></div>
+    <div class="tkpi"><div class="tkpi-l">W / L</div><div class="tkpi-v" id="k-wl">0/0</div></div>
     <div class="tkpi"><div class="tkpi-l">İşlemler</div><div class="tkpi-v" id="k-tr">0</div></div>
     <div class="tkpi"><div class="tkpi-l">Açık Poz.</div><div class="tkpi-v y" id="k-op">0</div></div>
+    <div class="tkpi"><div class="tkpi-l">Sinyaller</div><div class="tkpi-v" id="k-sigs">0</div></div>
     <div class="tkpi"><div class="tkpi-l">Çalışma</div><div class="tkpi-v" id="k-up">00:00:00</div></div>
+  </div>
   </div>
   <div class="bot-ctrl">
     <span class="badge" id="bot-status-badge" style="margin-right:.3rem">⬤ LOADING</span>
@@ -433,8 +436,10 @@ canvas#pc{width:100%!important;height:100%!important}
       <div class="sc"><div class="sc-l">Epsilon</div><div class="sc-v" id="s-eps">—</div><div class="sc-s">keşif oranı</div></div>
       <div class="sc"><div class="sc-l">Avg Reward</div><div class="sc-v" id="s-rew">—</div><div class="sc-s">son 20 ep.</div></div>
       <div class="sc"><div class="sc-l">Semboller</div><div class="sc-v" id="s-syms">0</div><div class="sc-s">izleniyor</div></div>
-      <div class="sc"><div class="sc-l">Max Drawdown</div><div class="sc-v r" id="s-dd">—</div><div class="sc-s">peak'ten düşüş</div></div>
-      <div class="sc"><div class="sc-l">Anlık PnL</div><div class="sc-v" id="s-opnl">$0</div><div class="sc-s">açık pozisyonlar</div></div>
+      <div class="sc"><div class="sc-l">Max Drawdown</div><div class="sc-v r" id="s-dd">0.00%</div><div class="sc-s">peak'ten düşüş</div></div>
+      <div class="sc"><div class="sc-l">Açık PnL</div><div class="sc-v" id="s-opnl">$0</div><div class="sc-s">unrealized</div></div>
+      <div class="sc"><div class="sc-l">Sinyaller</div><div class="sc-v b" id="s-totsig">0</div><div class="sc-s">üretilen</div></div>
+      <div class="sc"><div class="sc-l">Sonraki Güncelleme</div><div class="sc-v" id="s-nxt" style="font-size:.9rem">—</div><div class="sc-s">market verisi</div></div>
     </div>
     <!-- RL Weights -->
     <div style="border-top:1px solid var(--b0);padding:.4rem 0">
@@ -448,7 +453,7 @@ canvas#pc{width:100%!important;height:100%!important}
     <div class="ph">
       <div class="ph-title"><span class="ph-icon">◉</span>PİYASA VERİSİ</div>
       <div style="display:flex;align-items:center;gap:.4rem">
-        <input id="mkt-search" placeholder="Ara... BTC, ETH" oninput="renderMkt()" style="background:var(--s2);border:1px solid var(--b0);color:var(--t0);font-family:var(--mono);font-size:.62rem;padding:.2rem .5rem;border-radius:4px;outline:none;width:110px">
+        <input id="mkt-search" placeholder="BTC, ETH, SOL..." oninput="renderMkt()" onkeydown="if(event.key==='Escape')this.value='',renderMkt()" oninput="renderMkt()" style="background:var(--s2);border:1px solid var(--b0);color:var(--t0);font-family:var(--mono);font-size:.62rem;padding:.2rem .5rem;border-radius:4px;outline:none;width:110px">
         <span class="badge bg" id="mkt-cnt">0 Sembol</span>
       </div>
     </div>
@@ -463,9 +468,10 @@ canvas#pc{width:100%!important;height:100%!important}
           <th onclick="sortMkt('vol')">Hacim</th>
           <th>BB %</th>
           <th>Sinyal</th>
+          <th>Fiyat Trendi</th>
           <th>İşlem</th>
         </tr></thead>
-        <tbody id="mkt-body"><tr><td colspan="9" style="padding:1.5rem;text-align:center">
+        <tbody id="mkt-body"><tr><td colspan="10" style="padding:1.5rem;text-align:center">
           <div class="shim" style="width:70%;margin:auto;height:12px"></div>
         </td></tr></tbody>
       </table>
@@ -525,6 +531,11 @@ canvas#pc{width:100%!important;height:100%!important}
     <div class="ph">
       <div class="ph-title"><span class="ph-icon">≡</span>İŞLEM GEÇMİŞİ</div>
       <span class="badge bb" id="hist-cnt">0</span>
+    </div>
+    <div style="display:flex;gap:.4rem;padding:.3rem .8rem;border-bottom:1px solid var(--b0);font-size:.58rem;flex-shrink:0">
+      <span style="color:var(--t2)">Kazanç: <span id="h-wins-pnl" style="color:var(--g)">$0</span></span>
+      <span style="color:var(--t2)">Kayıp: <span id="h-loss-pnl" style="color:var(--r)">$0</span></span>
+      <span style="color:var(--t2)">Ort Süre: <span id="h-avg-dur" style="color:var(--b)">—</span></span>
     </div>
     <div class="pb-np" id="hist-body">
       <div class="empty" style="height:80px"><div>Henüz işlem yok</div></div>
@@ -723,8 +734,11 @@ async function fetchStatus(){
     set('k-pnl','$'+(pnl>=0?'+':'')+pnl.toFixed(4),pnl>=0?'g':'r');
     set('k-ret',(ret>=0?'+':'')+ret.toFixed(2)+'%',ret>=0?'g':'r');
     set('k-wr',(d.win_rate||0)+'%','b');
+    set('k-wl',(d.win_count||0)+'/'+(d.loss_count||0));
     set('k-tr',d.trade_count||0);
     set('k-op',d.open_positions||0,'y');
+    const totalSigs=d.rl_metrics&&d.rl_metrics.total_signals_processed||0;
+    set('k-sigs',totalSigs);
     set('k-up',fU(d.uptime_seconds||0));
 
     // Stats panel
@@ -797,12 +811,20 @@ async function fetchStatus(){
 }
 
 // ── MARKET ──
-let mktData={},mktSort='vol',mktDir=-1;
+let mktData={},mktSort='vol',mktDir=-1,sparkData={};
 function sortMkt(c){mktSort===c?mktDir*=-1:(mktSort=c,mktDir=-1);renderMkt()}
 async function fetchMarket(){
   try{
     const d=await fetch('/market').then(r=>r.json());
-    mktData=d.symbols||{};renderMkt();updateTape();
+    const prev=mktData;
+    mktData=d.symbols||{};
+    // Update sparkline history (last 20 prices per symbol)
+    Object.entries(mktData).forEach(([sym,d2])=>{
+      if(!sparkData[sym])sparkData[sym]=[];
+      sparkData[sym].push(d2.price||0);
+      if(sparkData[sym].length>20)sparkData[sym].shift();
+    });
+    renderMkt();updateTape();
     set('mkt-cnt',Object.keys(mktData).length+' Sembol');
     updateSentiment();
   }catch(e){console.warn('market',e)}
@@ -840,6 +862,7 @@ function renderMkt(){
       <td class="neu">${fV(vol)}</td>
       <td><div class="bar"><div class="bt"><div class="bf ${bw>50?'bf-g':'bf-r'}" style="width:${bw}%"></div></div><span style="font-size:.58rem;min-width:28px;text-align:right;color:${mom>=0?'var(--g)':'var(--r)'}">${mom>=0?'+':''}${mom.toFixed(2)}%</span></div></td>
       <td>${sig}</td>
+      <td>${renderSparkline(sym)}</td>
       <td style="white-space:nowrap">
         <button onclick="openTradeModalDirect('${sym}')" style="font-size:.52rem;padding:.1rem .35rem;background:rgba(0,195,130,0.1);border:1px solid rgba(0,195,130,0.25);color:var(--g);border-radius:3px;cursor:pointer;font-family:var(--mono)" title="Long Aç">▲L</button>
         <button onclick="openTradeModalDirectShort('${sym}')" style="font-size:.52rem;padding:.1rem .35rem;background:rgba(255,59,92,0.1);border:1px solid rgba(255,59,92,0.25);color:var(--r);border-radius:3px;cursor:pointer;font-family:var(--mono);margin-left:.2rem" title="Short Aç">▼S</button>
@@ -865,11 +888,25 @@ async function fetchSignals(){
     feed.innerHTML=sigs.slice(0,20).map(s=>{
       const pct=Math.round(s.confidence*100);const sym=shortSym(s.symbol);
       const cc=s.direction+'-c',dc='d'+s.direction.charAt(0),fc='f'+s.direction.charAt(0);
+      const ind=s.indicators||{};
+      const rsiV=ind.rsi||50;
+      const rsiCol=rsiV<35?'var(--g)':rsiV>65?'var(--r)':'var(--y)';
+      const chgV=ind.change_24h||0;
       return`<div class="sc2 ${cc}">
-        <div class="si-top"><span class="si-sym">${sym}</span><span class="si-dir ${dc}">${s.direction.toUpperCase()}</span></div>
+        <div class="si-top">
+          <span class="si-sym">${sym}</span>
+          <div style="display:flex;align-items:center;gap:.3rem">
+            <span style="font-size:.52rem;color:${rsiCol}">RSI ${rsiV.toFixed(0)}</span>
+            <span style="font-size:.52rem;color:${chgV>=0?'var(--g)':'var(--r)'}">${chgV>=0?'+':''}${chgV.toFixed(1)}%</span>
+            <span class="si-dir ${dc}">${s.direction.toUpperCase()}</span>
+          </div>
+        </div>
         <div class="si-conf"><div class="si-bar"><div class="si-fill ${fc}" style="width:${pct}%"></div></div><span class="si-pct">${pct}%</span></div>
         ${s.reason?`<div class="si-reason">${s.reason}</div>`:''}
-        <div class="si-time">${fT(s.timestamp)} · ${s.strategy}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:.2rem">
+          <span class="si-time">${fT(s.timestamp)}</span>
+          <button onclick="openTradeModalDirect('${s.symbol}','${s.direction==='buy'?'long':'short'}')" style="font-size:.5rem;padding:.08rem .3rem;background:rgba(0,150,255,0.1);border:1px solid rgba(0,150,255,0.25);color:var(--b);border-radius:3px;cursor:pointer;font-family:var(--mono)">⚡ İşlem</button>
+        </div>
       </div>`;
     }).join('');
   }catch(e){console.warn('signals',e)}
@@ -886,7 +923,7 @@ async function fetchPositions(){
     const openPnl=open.reduce((s,p)=>s+(p.pnl||0),0);
     const opEl=document.getElementById('s-opnl');
     if(opEl){opEl.textContent=(openPnl>=0?'+':'')+'$'+openPnl.toFixed(4);opEl.className='sc-v '+(openPnl>=0?'g':'r');}
-    if(!open.length){body.innerHTML='<div class="empty" style="height:80px"><div>Açık pozisyon yok</div></div>';return}
+    if(!open.length){body.innerHTML='<div class="empty" style="height:100px"><div style="font-size:1.2rem">📭</div><div>Bot işlem arıyor...</div><div style="font-size:.55rem;color:var(--t3)">Strateji sinyalleri bekleniyor</div></div>';return}
     body.innerHTML=open.map(p=>{
       const sym=shortSym(p.symbol);const pnlCls=p.pnl>=0?'pos-g':'pos-r';
       const sideCls=p.side==='long'?'ps-l':'ps-s';
@@ -938,6 +975,22 @@ setInterval(()=>{
   const el=document.getElementById('update-countdown');
   if(el){el.textContent=countdownVal+'s';el.style.color=countdownVal<=5?'var(--r)':countdownVal<=10?'var(--y)':'var(--b)';}
 },1000);
+
+function renderSparkline(sym){
+  const hist=sparkData[sym]||[];
+  if(hist.length<2)return'<span style="color:var(--t3)">—</span>';
+  const w=60,h=18;
+  const mn=Math.min(...hist),mx=Math.max(...hist);
+  const rng=mx-mn||1;
+  const pts=hist.map((v,i)=>{
+    const x=Math.round(i/(hist.length-1)*(w-2))+1;
+    const y=Math.round((1-(v-mn)/rng)*(h-2))+1;
+    return x+','+y;
+  }).join(' ');
+  const last=hist[hist.length-1],first=hist[0];
+  const col=last>=first?'#00c382':'#ff3b5c';
+  return`<svg width="${w}" height="${h}" style="vertical-align:middle"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+}
 
 function updateMoversStrip(entries){
   if(!entries.length)return;
@@ -1012,16 +1065,33 @@ async function fetchHistory(){
     const closed=d.closed||[];set('hist-cnt',closed.length);
     const body=document.getElementById('hist-body');
     if(!closed.length){body.innerHTML='<div class="empty" style="height:80px"><div>Henüz işlem yok</div></div>';return}
+    // History stats
+    const wins=closed.filter(x=>x.pnl>0);
+    const losses=closed.filter(x=>x.pnl<=0);
+    const winPnl=wins.reduce((s,x)=>s+x.pnl,0);
+    const lossPnl=losses.reduce((s,x)=>s+x.pnl,0);
+    const el1=document.getElementById('h-wins-pnl');
+    const el2=document.getElementById('h-loss-pnl');
+    const el3=document.getElementById('h-avg-dur');
+    if(el1)el1.textContent='+$'+winPnl.toFixed(3);
+    if(el2)el2.textContent='$'+lossPnl.toFixed(3);
+    if(el3&&closed.length){
+      const avgMs=closed.reduce((s,x)=>s+(new Date(x.closed_at)-new Date(x.opened_at)),0)/closed.length;
+      el3.textContent=avgMs>3600000?Math.floor(avgMs/3600000)+'s ':Math.floor(avgMs/60000)+'d';
+    }
     body.innerHTML=closed.slice(0,40).map(c=>{
       const pnlCls=c.pnl>=0?'pos-g':'pos-r';
       const sideCls=c.side==='long'?'ps-l':'ps-s';
       const rcls=c.close_reason&&c.close_reason.startsWith('TP')?'bg':c.close_reason==='SL'?'br':c.close_reason==='MANUAL'?'bp':'bb';
-      return`<div class="tr-row">
+      const durMs=new Date(c.closed_at)-new Date(c.opened_at);
+      const durStr=durMs>3600000?Math.floor(durMs/3600000)+'s':durMs>60000?Math.floor(durMs/60000)+'d':Math.floor(durMs/1000)+'s';
+      return`<div class="tr-row" style="border-left:2px solid ${c.pnl>=0?'var(--g)':'var(--r)'}">
         <span class="tr-side ${sideCls}">${c.side.substring(0,1).toUpperCase()}</span>
         <span class="tr-sym">${shortSym(c.symbol)}</span>
         <span class="badge ${rcls}" style="font-size:.5rem;padding:.08rem .3rem">${c.close_reason}</span>
-        <span class="tr-reason">${c.ai_summary||'—'}</span>
         <span class="tr-pnl ${pnlCls}">${c.pnl>=0?'+':''}$${(c.pnl||0).toFixed(4)}</span>
+        <span style="font-size:.57rem;color:${(c.pnl_pct||0)>=0?'var(--g)':'var(--r)'};min-width:42px">${(c.pnl_pct||0)>=0?'+':''}${(c.pnl_pct||0).toFixed(1)}%</span>
+        <span style="font-size:.55rem;color:var(--t2)">${durStr}</span>
         <span class="tr-time">${fT(c.closed_at)}</span>
       </div>`;
     }).join('');
