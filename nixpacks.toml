@@ -1,0 +1,8 @@
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.11"
+
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[start]
+cmd = "python main.py"
