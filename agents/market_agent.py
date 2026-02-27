@@ -28,7 +28,10 @@ def calc_rsi(prices: list, period: int = 14) -> float:
     gains, losses = [], []
     for i in range(-period, 0):
         diff = prices[i] - prices[i - 1]
-        (gains if diff > 0 else losses).append(abs(diff))
+        if diff > 0:
+            gains.append(diff)
+        elif diff < 0:
+            losses.append(abs(diff))
     avg_gain = sum(gains) / period if gains else 0
     avg_loss = sum(losses) / period if losses else 1e-9
     rs = avg_gain / avg_loss
