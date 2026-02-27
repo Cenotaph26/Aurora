@@ -114,7 +114,7 @@ a{color:var(--g);text-decoration:none}
 
 /* ── TICKER TAPE ── */
 .tape{position:relative;z-index:100;background:var(--s0);border-bottom:1px solid var(--b0);height:26px;overflow:hidden;display:flex;align-items:center}
-.tape-inner{display:flex;white-space:nowrap;animation:tape 80s linear infinite}
+.tape-inner{display:flex;white-space:nowrap;animation:tape 300s linear infinite}
 .tape-inner:hover{animation-play-state:paused}
 @keyframes tape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .ti{display:inline-flex;align-items:center;gap:.35rem;padding:0 1rem;font-size:.65rem;border-right:1px solid var(--t3)}
@@ -158,8 +158,8 @@ a{color:var(--g);text-decoration:none}
 
 /* ── MAIN LAYOUT ── */
 .workspace{position:relative;z-index:1;display:grid;
-  grid-template-columns:1fr 1fr 1fr 280px;
-  grid-template-rows:190px 210px 230px 1fr;
+  grid-template-columns:1fr 1fr 1fr 300px;
+  grid-template-rows:180px 200px 280px 200px;
   gap:1px;background:var(--t3);
   height:calc(100vh - 76px);overflow:hidden}
 
@@ -184,7 +184,7 @@ a{color:var(--g);text-decoration:none}
 .s-stats{grid-column:4;grid-row:1/3}
 .s-market{grid-column:1/3;grid-row:2}
 .s-signals{grid-column:3;grid-row:2/5}
-.s-positions{grid-column:1/3;grid-row:3}
+.s-positions{grid-column:1/3;grid-row:3/5}
 .s-history{grid-column:1;grid-row:4}
 .s-agents{grid-column:2;grid-row:4}
 
@@ -324,6 +324,17 @@ canvas#pc{width:100%!important;height:100%!important}
 .btn-cancel{background:var(--s2);border:1px solid var(--b0);color:var(--t2);
   padding:.4rem .9rem;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:.7rem}
 
+/* ── SENTIMENT BAR ── */
+.sent-bar{display:flex;align-items:center;gap:.5rem;padding:.35rem .8rem;border-bottom:1px solid var(--b0);flex-shrink:0;font-size:.6rem}
+.sent-seg{height:6px;border-radius:2px;transition:width .6s ease;min-width:2px}
+.sent-labels{display:flex;justify-content:space-between;font-size:.52rem;color:var(--t2);margin-top:.15rem}
+.sent-info{display:flex;gap:.7rem;font-size:.6rem;flex-shrink:0}
+.sent-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:.25rem}
+/* ── POS SUMMARY ── */
+.pos-summary-bar{display:flex;gap:.5rem;padding:.3rem .8rem;border-bottom:1px solid var(--b0);flex-shrink:0;font-size:.6rem;flex-wrap:wrap;align-items:center}
+.psb-item{display:flex;flex-direction:column;padding:.2rem .5rem;background:var(--s2);border-radius:4px;border:1px solid var(--b0);min-width:60px}
+.psb-lbl{font-size:.5rem;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.1rem}
+.psb-val{font-family:var(--head);font-size:.85rem;font-weight:700}
 /* ── SHIMMER ── */
 .shim{background:linear-gradient(90deg,var(--t3) 25%,rgba(0,195,130,0.05) 50%,var(--t3) 75%);background-size:200% 100%;animation:shim 1.5s infinite;border-radius:3px}
 @keyframes shim{from{background-position:-200% 0}to{background-position:200% 0}}
@@ -394,6 +405,8 @@ canvas#pc{width:100%!important;height:100%!important}
       <div class="sc"><div class="sc-l">Epsilon</div><div class="sc-v" id="s-eps">—</div><div class="sc-s">keşif oranı</div></div>
       <div class="sc"><div class="sc-l">Avg Reward</div><div class="sc-v" id="s-rew">—</div><div class="sc-s">son 20 ep.</div></div>
       <div class="sc"><div class="sc-l">Semboller</div><div class="sc-v" id="s-syms">0</div><div class="sc-s">izleniyor</div></div>
+      <div class="sc"><div class="sc-l">Max Drawdown</div><div class="sc-v r" id="s-dd">—</div><div class="sc-s">peak'ten düşüş</div></div>
+      <div class="sc"><div class="sc-l">Anlık PnL</div><div class="sc-v" id="s-opnl">$0</div><div class="sc-s">açık pozisyonlar</div></div>
     </div>
     <!-- RL Weights -->
     <div style="border-top:1px solid var(--b0);padding:.4rem 0">
@@ -406,7 +419,10 @@ canvas#pc{width:100%!important;height:100%!important}
   <div class="panel s-market">
     <div class="ph">
       <div class="ph-title"><span class="ph-icon">◉</span>PİYASA VERİSİ</div>
-      <span class="badge bg" id="mkt-cnt">0 Sembol</span>
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <input id="mkt-search" placeholder="Ara... BTC, ETH" oninput="renderMkt()" style="background:var(--s2);border:1px solid var(--b0);color:var(--t0);font-family:var(--mono);font-size:.62rem;padding:.2rem .5rem;border-radius:4px;outline:none;width:110px">
+        <span class="badge bg" id="mkt-cnt">0 Sembol</span>
+      </div>
     </div>
     <div class="pb-np">
       <table class="dt">
@@ -443,6 +459,31 @@ canvas#pc{width:100%!important;height:100%!important}
       <div style="display:flex;gap:.4rem;align-items:center">
         <span class="badge by" id="pos-cnt">0 Aktif</span>
         <button onclick="fetchPositions()" style="background:var(--s2);border:1px solid var(--b0);color:var(--t2);font-size:.55rem;padding:.15rem .4rem;border-radius:3px;cursor:pointer;font-family:var(--mono)">↻</button>
+      </div>
+    </div>
+    <!-- Pozisyon özet barı -->
+    <div class="pos-summary-bar" id="pos-summary" style="display:none">
+      <div class="psb-item"><div class="psb-lbl">Toplam PnL</div><div class="psb-val" id="psb-pnl">$0</div></div>
+      <div class="psb-item"><div class="psb-lbl">Toplam Büyüklük</div><div class="psb-val" id="psb-size" style="color:var(--y)">$0</div></div>
+      <div class="psb-item"><div class="psb-lbl">En İyi</div><div class="psb-val pos-g" id="psb-best">—</div></div>
+      <div class="psb-item"><div class="psb-lbl">En Kötü</div><div class="psb-val pos-r" id="psb-worst">—</div></div>
+      <div class="psb-item"><div class="psb-lbl">L/S Oran</div><div class="psb-val" id="psb-ratio" style="color:var(--b)">0/0</div></div>
+    </div>
+    <!-- RSI Sentiment bar -->
+    <div class="sent-bar" id="sent-wrap" style="flex-direction:column;align-items:stretch;padding:.4rem .8rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem">
+        <span style="font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)">◈ PİYASA DUYGUSU (RSI Dağılımı)</span>
+        <span style="font-size:.58rem;color:var(--t1)" id="sent-score">—</span>
+      </div>
+      <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--t3)">
+        <div id="sent-os" class="sent-seg" style="background:#00c382;width:0%"></div>
+        <div id="sent-n"  class="sent-seg" style="background:#3a5060;width:100%"></div>
+        <div id="sent-ob" class="sent-seg" style="background:#ff3b5c;width:0%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:.2rem;font-size:.52rem;color:var(--t2)">
+        <span id="sent-os-lbl">Aşırı Satım 0</span>
+        <span id="sent-n-lbl">Nötr</span>
+        <span id="sent-ob-lbl">Aşırı Alım 0</span>
       </div>
     </div>
     <div class="pb-np" id="pos-body">
@@ -512,10 +553,6 @@ canvas#pc{width:100%!important;height:100%!important}
           <input type="number" id="cfg-mktint" step="1" min="5" max="300" placeholder="15">
         </div>
       </div>
-      <div class="field-group">
-        <label>İzlenecek Semboller (virgülle)</label>
-        <input type="text" id="cfg-syms" placeholder="bitcoin,ethereum,solana,binancecoin,ripple">
-      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeSettings()">İptal</button>
@@ -527,7 +564,7 @@ canvas#pc{width:100%!important;height:100%!important}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 'use strict';
-const ST={pnlHist:[0],prevP:{},chartMode:'cumulative'};
+const ST={pnlHist:[0],prevP:{},chartMode:'cumulative',peakEquity:1000};
 const SYM={'bitcoin':'BTC','ethereum':'ETH','solana':'SOL','binancecoin':'BNB','ripple':'XRP'};
 const ROLES={MarketAgent:'CoinGecko · Veri Toplayıcı',StrategyAgent:'RSI/MACD/BB · Sinyal Üretici',
   RLMetaAgent:'Q-Learning · Ağırlık Güncelleyici',ExecutionAgent:'Paper Trade · Emir Uygulayıcı'};
@@ -584,7 +621,12 @@ function fT(iso){const d=new Date(iso.includes('Z')?iso:iso+'Z');
   return d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 function set(id,v,cls){const e=document.getElementById(id);if(!e)return;
   e.textContent=v;if(cls)e.className=e.className.replace(/\b(g|r|b|y)\b/g,'')+' '+cls}
-function shortSym(s){return SYM[s]||(s.substring(0,4).toUpperCase())}
+function shortSym(s){
+  // Binance format: BTCUSDT → BTC, ETHUSDT → ETH
+  if(s.endsWith('USDT')) return s.slice(0,-4);
+  if(s.endsWith('BUSD')) return s.slice(0,-4);
+  return SYM[s]||(s.substring(0,6).toUpperCase());
+}
 
 // ── STATUS ──
 async function fetchStatus(){
@@ -611,6 +653,13 @@ async function fetchStatus(){
     set('s-wr',(d.win_rate||0)+'%','b');
     set('s-trades',(d.trade_count||0)+' işlem');
     set('s-syms',d.market_symbols||0);
+    // Drawdown
+    if(eq>ST.peakEquity)ST.peakEquity=eq;
+    const dd=ST.peakEquity>0?((ST.peakEquity-eq)/ST.peakEquity*100):0;
+    const ddEl=document.getElementById('s-dd');
+    ddEl.textContent=(dd>0?'-':'')+dd.toFixed(2)+'%';
+    ddEl.className='sc-v '+(dd>5?'r':dd>2?'y':'g');
+    // Open position PnL (from positions data fetched separately)
 
     // Bot status
     const bBadge=document.getElementById('bot-status-badge');
@@ -660,23 +709,25 @@ async function fetchStatus(){
       document.getElementById('cfg-tp').placeholder=s.take_profit_pct;
       document.getElementById('cfg-maxpos').placeholder=s.max_positions;
       document.getElementById('cfg-mktint').placeholder=s.market_interval;
-      document.getElementById('cfg-syms').placeholder=s.watch_symbols;
     }
   }catch(e){console.warn('status',e)}
 }
 
 // ── MARKET ──
-let mktData={},mktSort='change',mktDir=-1;
+let mktData={},mktSort='vol',mktDir=-1;
 function sortMkt(c){mktSort===c?mktDir*=-1:(mktSort=c,mktDir=-1);renderMkt()}
 async function fetchMarket(){
   try{
     const d=await fetch('/market').then(r=>r.json());
     mktData=d.symbols||{};renderMkt();updateTape();
     set('mkt-cnt',Object.keys(mktData).length+' Sembol');
+    updateSentiment();
   }catch(e){console.warn('market',e)}
 }
 function renderMkt(){
-  const entries=Object.entries(mktData);
+  const q=(document.getElementById('mkt-search')||{}).value||'';
+  let entries=Object.entries(mktData);
+  if(q.trim()) entries=entries.filter(([sym])=>sym.toLowerCase().includes(q.toLowerCase()));
   if(!entries.length)return;
   entries.sort(([,a],[,b])=>{
     const gv=x=>({'sym':0,price:x.price||0,change:x.change_24h||0,rsi:x.rsi||50,macd:x.macd||0,vol:x.volume_24h||0}[mktSort]||0);
@@ -741,36 +792,96 @@ async function fetchPositions(){
     const d=await fetch('/positions').then(r=>r.json());
     const open=d.open||[];set('pos-cnt',open.length+' Aktif');set('k-op',open.length,'y');
     const body=document.getElementById('pos-body');
+    updatePosSummary(open);
     if(!open.length){body.innerHTML='<div class="empty" style="height:80px"><div>Açık pozisyon yok</div></div>';return}
     body.innerHTML=open.map(p=>{
       const sym=shortSym(p.symbol);const pnlCls=p.pnl>=0?'pos-g':'pos-r';
       const sideCls=p.side==='long'?'ps-l':'ps-s';
       const prog=p.progress_pct||0;
-      return`<div class="pos-row">
+      const lev=p.leverage||1;
+      const posSize=(p.value_usd||0)*lev;
+      const pnlBg=p.pnl>=0?'rgba(0,195,130,0.08)':'rgba(255,59,92,0.08)';
+      const borderCol=p.pnl>=0?'var(--g)':'var(--r)';
+      return`<div class="pos-row" style="border-left:2px solid ${borderCol};padding-left:.7rem">
         <div class="pos-header">
-          <div><span class="pos-sym">${sym}</span><span class="pos-side ${sideCls}">${p.side.toUpperCase()}</span></div>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <span class="pos-pnl ${pnlCls}">${p.pnl>=0?'+':''}$${(p.pnl||0).toFixed(4)} (${p.pnl_pct>=0?'+':''}${(p.pnl_pct||0).toFixed(2)}%)</span>
+          <div style="display:flex;align-items:center;gap:.4rem">
+            <span class="pos-sym">${sym}</span>
+            <span class="pos-side ${sideCls}">${p.side.toUpperCase()}</span>
+            <span style="font-size:.52rem;padding:.1rem .32rem;border-radius:3px;background:rgba(0,150,255,0.12);color:var(--b);border:1px solid rgba(0,150,255,0.3)">${lev}x</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.4rem">
+            <span class="pos-pnl ${pnlCls}" style="background:${pnlBg};padding:.15rem .5rem;border-radius:4px;font-size:.8rem">${p.pnl>=0?'+':''}$${(p.pnl||0).toFixed(4)} <span style="font-size:.65rem">(${p.pnl_pct>=0?'+':''}${(p.pnl_pct||0).toFixed(2)}%)</span></span>
             <button class="pos-close-btn" onclick="closePos('${p.symbol}')">✕ KAPAT</button>
           </div>
         </div>
-        <div class="pos-meta">
-          <span><span class="lbl">Giriş:</span>${fP(p.entry_price)}</span>
-          <span><span class="lbl">Anlık:</span>${fP(p.current_price)}</span>
-          <span><span class="lbl">Hacim:</span>$${(p.value_usd||0).toFixed(2)}</span>
-          <span><span class="lbl">Açıldı:</span>${fT(p.opened_at)}</span>
+        <div class="pos-meta" style="flex-wrap:wrap;margin:.2rem 0">
+          <span><span class="lbl">Giriş</span>${fP(p.entry_price)}</span>
+          <span><span class="lbl">Anlık</span><span style="color:${(p.current_price||0)>=(p.entry_price||0)?'var(--g)':'var(--r)'}">${fP(p.current_price)}</span></span>
+          <span title="Pozisyon Büyüklüğü = Teminat × Kaldıraç"><span class="lbl">Pos. Büyüklük</span><span style="color:var(--y)">$${posSize.toFixed(2)}</span></span>
+          <span><span class="lbl">Teminat</span>$${(p.value_usd||0).toFixed(2)}</span>
+          <span><span class="lbl">Miktar</span>${(p.qty||0).toFixed(6)}</span>
+          <span><span class="lbl">Açıldı</span>${fT(p.opened_at)}</span>
         </div>
         <div class="sltp-bar">
-          <span class="sltp-sl">SL: ${fP(p.stop_loss)}</span>
+          <span class="sltp-sl">🛑 ${fP(p.stop_loss)}</span>
           <div class="sltp-track"><div class="sltp-fill" style="width:${prog}%"></div></div>
           <span class="sltp-pct">${prog.toFixed(0)}%</span>
-          <span class="sltp-tp">TP: ${fP(p.take_profit)}</span>
+          <span class="sltp-tp">🎯 ${fP(p.take_profit)}${p.take_profit_levels&&p.take_profit_levels.length>1?' ('+(p.tp_hit_count+1)+'/'+p.take_profit_levels.length+')':''}</span>
         </div>
+        ${p.take_profit_levels&&p.take_profit_levels.length>1?`<div style="display:flex;gap:.28rem;padding:.2rem 0;flex-wrap:wrap">${p.take_profit_levels.map((t,i)=>`<span style="font-size:.54rem;padding:.12rem .38rem;border-radius:3px;background:${i<p.tp_hit_count?'rgba(0,195,130,0.2)':'rgba(0,195,130,0.05)'};color:${i<p.tp_hit_count?'var(--g)':'var(--t1)'};border:1px solid rgba(0,195,130,${i<p.tp_hit_count?'0.4':'0.12'})">${i<p.tp_hit_count?'✓ ':''}TP${i+1} ${fP(t)}</span>`).join('')}</div>`:''}
         ${p.ai_summary?`<div class="pos-ai"><div class="pos-ai-label">⬡ AI Özeti</div>${p.ai_summary}</div>`:''}
-        ${p.reason?`<div style="font-size:.57rem;color:var(--t2);padding-top:.2rem">📍 Sebep: ${p.reason}</div>`:''}
+        ${p.reason?`<div style="font-size:.57rem;color:var(--t2);padding-top:.12rem">📍 ${p.reason}</div>`:''}
       </div>`;
     }).join('');
   }catch(e){console.warn('positions',e)}
+}
+
+// ── POSITION SUMMARY + SENTIMENT ──
+function updateSentiment(){
+  const entries=Object.values(mktData);
+  if(!entries.length)return;
+  let os=0,ob=0,neutral=0;
+  entries.forEach(d=>{
+    const r=d.rsi||50;
+    if(r<30)os++;
+    else if(r>70)ob++;
+    else neutral++;
+  });
+  const total=entries.length;
+  const osPct=Math.round(os/total*100);
+  const obPct=Math.round(ob/total*100);
+  const nPct=100-osPct-obPct;
+  document.getElementById('sent-os').style.width=osPct+'%';
+  document.getElementById('sent-n').style.width=nPct+'%';
+  document.getElementById('sent-ob').style.width=obPct+'%';
+  document.getElementById('sent-os-lbl').textContent='🟢 Aşırı Satım '+os;
+  document.getElementById('sent-n-lbl').textContent='Nötr '+neutral;
+  document.getElementById('sent-ob-lbl').textContent='Aşırı Alım '+ob+' 🔴';
+  // Piyasa skoru: -100 (tam bearish) → +100 (tam bullish)
+  const score=Math.round((os-ob)/total*100);
+  const scoreEl=document.getElementById('sent-score');
+  if(score>20){scoreEl.textContent='BULLISH +'+score;scoreEl.style.color='var(--g)';}
+  else if(score<-20){scoreEl.textContent='BEARISH '+score;scoreEl.style.color='var(--r)';}
+  else{scoreEl.textContent='NÖTR '+score;scoreEl.style.color='var(--t1)';}
+}
+
+function updatePosSummary(open){
+  const summaryEl=document.getElementById('pos-summary');
+  if(!open.length){summaryEl.style.display='none';return;}
+  summaryEl.style.display='flex';
+  const totalPnl=open.reduce((s,p)=>s+(p.pnl||0),0);
+  const totalSize=open.reduce((s,p)=>s+(p.value_usd||0)*(p.leverage||1),0);
+  const longs=open.filter(p=>p.side==='long').length;
+  const shorts=open.filter(p=>p.side==='short').length;
+  const sorted=[...open].sort((a,b)=>(b.pnl||0)-(a.pnl||0));
+  const best=sorted[0],worst=sorted[sorted.length-1];
+  const pnlEl=document.getElementById('psb-pnl');
+  pnlEl.textContent=(totalPnl>=0?'+':'')+'$'+totalPnl.toFixed(4);
+  pnlEl.style.color=totalPnl>=0?'var(--g)':'var(--r)';
+  document.getElementById('psb-size').textContent='$'+totalSize.toFixed(2);
+  document.getElementById('psb-best').textContent=best?shortSym(best.symbol)+' +'+(best.pnl||0).toFixed(3):'—';
+  document.getElementById('psb-worst').textContent=worst?shortSym(worst.symbol)+' '+(worst.pnl||0).toFixed(3):'—';
+  document.getElementById('psb-ratio').textContent='L'+longs+'/S'+shorts;
 }
 
 // ── CLOSED POSITIONS / HISTORY ──
@@ -783,7 +894,7 @@ async function fetchHistory(){
     body.innerHTML=closed.slice(0,40).map(c=>{
       const pnlCls=c.pnl>=0?'pos-g':'pos-r';
       const sideCls=c.side==='long'?'ps-l':'ps-s';
-      const rcls=c.close_reason==='TP'?'bg':c.close_reason==='SL'?'br':c.close_reason==='MANUAL'?'bp':'bb';
+      const rcls=c.close_reason&&c.close_reason.startsWith('TP')?'bg':c.close_reason==='SL'?'br':c.close_reason==='MANUAL'?'bp':'bb';
       return`<div class="tr-row">
         <span class="tr-side ${sideCls}">${c.side.substring(0,1).toUpperCase()}</span>
         <span class="tr-sym">${shortSym(c.symbol)}</span>
@@ -835,7 +946,6 @@ async function openSettings(){
   document.getElementById('cfg-tp').value=s.take_profit_pct;
   document.getElementById('cfg-maxpos').value=s.max_positions;
   document.getElementById('cfg-mktint').value=s.market_interval;
-  document.getElementById('cfg-syms').value=s.watch_symbols;
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings(){document.getElementById('settings-modal').classList.remove('open')}
@@ -847,7 +957,6 @@ async function saveSettings(){
     take_profit_pct:parseFloat(document.getElementById('cfg-tp').value),
     max_positions:parseInt(document.getElementById('cfg-maxpos').value),
     market_interval:parseInt(document.getElementById('cfg-mktint').value),
-    watch_symbols:document.getElementById('cfg-syms').value.trim(),
   };
   await fetch('/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   closeSettings();await fetchStatus();

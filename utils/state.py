@@ -1,10 +1,10 @@
 """
 Aurora AI — Gelişmiş Paylaşılan Durum Yöneticisi
+- Çoklu TP desteği (tp_levels: list)
 - Pozisyonlarda SL/TP/AI özeti/sebep alanları
 - Bot kontrol (start/stop/pause)
 - Kapalı pozisyon geçmişi
-- Dinamik ayarlar
-- Başlangıç sermayesi takibi
+- Dinamik ayarlar (watch_symbols kaldırıldı)
 """
 import threading
 from dataclasses import dataclass, field
@@ -20,14 +20,16 @@ class Position:
     entry_price: float
     current_price: float = 0.0
     stop_loss: float = 0.0
-    take_profit: float = 0.0
+    take_profit: float = 0.0          # ilk / tek TP (geriye dönük uyumluluk)
+    take_profit_levels: List[float] = field(default_factory=list)  # [TP1, TP2, TP3]
+    tp_hit_count: int = 0             # kaç TP seviyesi tetiklendi
     pnl: float = 0.0
     pnl_pct: float = 0.0
     opened_at: datetime = field(default_factory=datetime.utcnow)
-    reason: str = ""             # Neden açıldı (strateji özeti)
-    ai_summary: str = ""         # AI özet metni
+    reason: str = ""
+    ai_summary: str = ""
     indicators_at_open: dict = field(default_factory=dict)
-    value_usd: float = 0.0       # Açılış değeri ($)
+    value_usd: float = 0.0
 
 
 @dataclass
@@ -41,7 +43,7 @@ class ClosedPosition:
     pnl_pct: float
     opened_at: datetime
     closed_at: datetime = field(default_factory=datetime.utcnow)
-    close_reason: str = ""       # "SL" | "TP" | "SIGNAL" | "MANUAL"
+    close_reason: str = ""       # "SL" | "TP1" | "TP2" | "TP3" | "SIGNAL" | "MANUAL"
     ai_summary: str = ""
 
 
@@ -61,12 +63,11 @@ class BotSettings:
         self.min_confidence: float = 0.55
         self.risk_pct: float = 0.02
         self.stop_loss_pct: float = 0.03
-        self.take_profit_pct: float = 0.06
-        self.market_interval: int = 15
+        self.take_profit_pct: float = 0.06   # tek TP ya da TP1 baz yüzdesi
+        self.market_interval: int = 30
         self.strategy_interval: int = 20
         self.exec_interval: int = 10
-        self.watch_symbols: str = "bitcoin,ethereum,solana,binancecoin,ripple"
-        self.max_positions: int = 5
+        self.max_positions: int = 10
 
     def to_dict(self):
         return {
@@ -77,7 +78,6 @@ class BotSettings:
             "market_interval": self.market_interval,
             "strategy_interval": self.strategy_interval,
             "exec_interval": self.exec_interval,
-            "watch_symbols": self.watch_symbols,
             "max_positions": self.max_positions,
         }
 
@@ -111,15 +111,11 @@ class SharedState:
         self.agent_heartbeats: Dict[str, datetime] = {}
         self.started_at: datetime = datetime.utcnow()
 
-        # Bot control
         self.bot_running: bool = True
         self.bot_paused: bool = False
         self.bot_status_log: List[dict] = []
 
-        # Settings
         self.settings = BotSettings()
-
-        # System log
         self.system_log: List[dict] = []
 
     def _log(self, level: str, msg: str):
@@ -141,8 +137,8 @@ class SharedState:
     async def add_signal(self, signal: Signal):
         with self._lock:
             self.signals.append(signal)
-            if len(self.signals) > 100:
-                self.signals = self.signals[-100:]
+            if len(self.signals) > 200:
+                self.signals = self.signals[-200:]
 
     async def get_signals(self) -> List[Signal]:
         with self._lock:
@@ -154,10 +150,15 @@ class SharedState:
             self.positions[pos.symbol] = pos
             self.trade_count += 1
             self.capital -= pos.value_usd
+            tp_str = ""
+            if pos.take_profit_levels:
+                tp_str = " | TP: " + " / ".join([f"${t:.4f}" for t in pos.take_profit_levels])
+            else:
+                tp_str = f" | TP:${pos.take_profit:.4f}"
             self.system_log.append({
                 "ts": datetime.utcnow().isoformat(),
                 "level": "TRADE",
-                "msg": f"📈 {pos.side.upper()} açıldı: {pos.symbol} @ ${pos.entry_price:.4f} | SL:${pos.stop_loss:.4f} TP:${pos.take_profit:.4f}"
+                "msg": f"📈 {pos.side.upper()} açıldı: {pos.symbol} @ ${pos.entry_price:.4f} | SL:${pos.stop_loss:.4f}{tp_str}"
             })
 
     async def close_position(self, symbol: str, exit_price: float, reason: str = "SIGNAL") -> float:
@@ -181,13 +182,44 @@ class SharedState:
                 ai_summary=pos.ai_summary,
             )
             self.closed_positions.append(closed)
-            if len(self.closed_positions) > 100:
-                self.closed_positions = self.closed_positions[-100:]
-            icon = "🎯" if reason == "TP" else "🛑" if reason == "SL" else "📉"
+            if len(self.closed_positions) > 200:
+                self.closed_positions = self.closed_positions[-200:]
+            icon = "🎯" if reason.startswith("TP") else "🛑" if reason == "SL" else "📉"
             self.system_log.append({
                 "ts": datetime.utcnow().isoformat(),
                 "level": "TRADE",
                 "msg": f"{icon} {pos.side.upper()} kapatıldı: {symbol} [{reason}] PnL=${pnl:+.4f} ({pnl_pct:+.2f}%)"
+            })
+            if len(self.system_log) > 200:
+                self.system_log = self.system_log[-200:]
+            return pnl
+
+    async def partial_close_position(self, symbol: str, exit_price: float, close_ratio: float, reason: str) -> float:
+        """Pozisyonun bir kısmını kapat (çoklu TP için)"""
+        with self._lock:
+            if symbol not in self.positions:
+                return 0.0
+            pos = self.positions[symbol]
+            close_qty = pos.qty * close_ratio
+            pnl = (exit_price - pos.entry_price) * close_qty
+            if pos.side == "short":
+                pnl = -pnl
+            close_value = close_qty * pos.entry_price
+            pnl_pct = (pnl / close_value * 100) if close_value else 0
+
+            # Kalan miktarı güncelle
+            pos.qty -= close_qty
+            pos.value_usd -= close_value
+            pos.tp_hit_count += 1
+            self.total_pnl += pnl
+            self.capital += close_value + pnl
+            if pnl > 0:
+                self.win_count += 1
+
+            self.system_log.append({
+                "ts": datetime.utcnow().isoformat(),
+                "level": "TRADE",
+                "msg": f"🎯 {pos.side.upper()} kısmi kapatma: {symbol} [{reason}] %{int(close_ratio*100)} | PnL=${pnl:+.4f}"
             })
             if len(self.system_log) > 200:
                 self.system_log = self.system_log[-200:]
@@ -251,14 +283,15 @@ class SharedState:
                 cur = mdata.get("price", p.entry_price)
                 pnl = (cur - p.entry_price) * p.qty if p.side == "long" else (p.entry_price - cur) * p.qty
                 pnl_pct = (pnl / p.value_usd * 100) if p.value_usd else 0
-                # SL/TP progress (0-100%)
-                sl_dist = abs(p.entry_price - p.stop_loss)
-                tp_dist = abs(p.take_profit - p.entry_price)
+                # Sonraki TP hedefi
+                active_tp = p.take_profit
+                tp_levels = p.take_profit_levels
+                next_tp_idx = p.tp_hit_count
+                if tp_levels and next_tp_idx < len(tp_levels):
+                    active_tp = tp_levels[next_tp_idx]
+                tp_dist = abs(active_tp - p.entry_price)
                 cur_dist = abs(cur - p.entry_price)
-                if tp_dist > 0:
-                    progress = min(100, max(0, (cur_dist / tp_dist) * 100))
-                else:
-                    progress = 0
+                progress = min(100, max(0, (cur_dist / tp_dist) * 100)) if tp_dist > 0 else 0
                 result.append({
                     "symbol": sym,
                     "side": p.side,
@@ -266,7 +299,9 @@ class SharedState:
                     "entry_price": p.entry_price,
                     "current_price": cur,
                     "stop_loss": p.stop_loss,
-                    "take_profit": p.take_profit,
+                    "take_profit": active_tp,
+                    "take_profit_levels": tp_levels,
+                    "tp_hit_count": p.tp_hit_count,
                     "pnl": round(pnl, 6),
                     "pnl_pct": round(pnl_pct, 2),
                     "value_usd": round(p.value_usd, 2),
@@ -293,5 +328,5 @@ class SharedState:
                     "closed_at": c.closed_at.isoformat(),
                     "ai_summary": c.ai_summary,
                 }
-                for c in reversed(self.closed_positions[-50:])
+                for c in reversed(self.closed_positions[-100:])
             ]
