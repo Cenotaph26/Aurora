@@ -1,6 +1,5 @@
-class Executor:
-
-    async def execute(self, trade):
-        print(
-            f"EXECUTING {trade['side']} {trade['symbol']} risk={trade['risk']}"
-        )
+import asyncio
+async def execution_loop():
+    while True:
+        print("Execution Agent placing trades...")
+        await asyncio.sleep(8)

@@ -1,11 +1,5 @@
-import random
-
-class StrategyAgent:
-
-    async def decide(self, symbol):
-        side = random.choice(["LONG","SHORT"])
-        return {
-            "symbol": symbol,
-            "side": side,
-            "confidence": random.random()
-        }
+import asyncio
+async def strategy_loop():
+    while True:
+        print("Strategy Swarm evaluating trades...")
+        await asyncio.sleep(7)

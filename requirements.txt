@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+aiohttp
+redis
+stable-baselines3
+python-binance

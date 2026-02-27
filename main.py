@@ -1,12 +1,23 @@
 import asyncio
-from core.swarm import Swarm
-from config import SYMBOLS, LOOP_INTERVAL
+import traceback
+from agents.market_agent import market_loop
+from agents.strategy_agent import strategy_loop
+from rl_engine.meta_agent import rl_loop
+from execution.executor import execution_loop
 
-swarm = Swarm()
+async def main():
+    tasks = [
+        asyncio.create_task(market_loop()),
+        asyncio.create_task(strategy_loop()),
+        asyncio.create_task(rl_loop()),
+        asyncio.create_task(execution_loop()),
+    ]
+    await asyncio.gather(*tasks)
 
-async def run():
+if __name__ == "__main__":
     while True:
-        await swarm.cycle(SYMBOLS)
-        await asyncio.sleep(LOOP_INTERVAL)
-
-asyncio.run(run())
+        try:
+            asyncio.run(main())
+        except Exception:
+            print(traceback.format_exc())
+            asyncio.sleep(5)
