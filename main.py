@@ -208,8 +208,8 @@ th{padding:.3rem .5rem;text-align:right;color:var(--t2);letter-spacing:.07em;
 th:first-child,th:nth-child(2){text-align:left}
 th:hover{color:var(--t1)}
 th.sorted{color:var(--g)}
-td{padding:.24rem .5rem;border-bottom:1px solid rgba(0,195,130,0.03);text-align:right;
-  white-space:nowrap;vertical-align:middle;font-size:.6rem}
+td{padding:.28rem .5rem;border-bottom:1px solid rgba(0,195,130,0.03);text-align:right;
+  white-space:nowrap;vertical-align:middle}
 td:first-child{text-align:left}
 tr:hover td{background:rgba(0,195,130,0.03)}
 .sym-cell{display:flex;flex-direction:column}
@@ -231,17 +231,32 @@ tr:hover td{background:rgba(0,195,130,0.03)}
 .tb-s:hover{background:rgba(255,59,92,0.15)}
 
 /* ── POSITION CARDS ── */
-.pos-card{padding:.6rem .75rem;border-bottom:1px solid rgba(0,195,130,0.06);
-  display:flex;flex-direction:column;gap:.28rem;flex-shrink:0}
+.pos-card{padding:.5rem .75rem;border-bottom:1px solid rgba(0,195,130,0.05);
+  display:flex;flex-direction:column;gap:.22rem;flex-shrink:0}
 .pos-card:last-child{border-bottom:none}
+.pc-row1{display:flex;align-items:center;justify-content:space-between;gap:.3rem;flex-wrap:nowrap}
+.pc-sym{font-family:var(--head);font-size:.9rem;font-weight:700;color:#fff}
+.pc-side{font-size:.48rem;font-weight:800;padding:.08rem .28rem;border-radius:3px}
 .ps-l{background:rgba(0,195,130,0.12);color:var(--g);border:1px solid rgba(0,195,130,0.25)}
 .ps-s{background:rgba(255,59,92,0.12);color:var(--r);border:1px solid rgba(255,59,92,0.25)}
-.pc-close{font-size:.6rem;padding:.2rem .55rem;background:rgba(255,59,92,0.08);
-  border:1px solid rgba(255,59,92,0.25);color:var(--r);border-radius:4px;cursor:pointer;
-  font-family:var(--mono);flex-shrink:0;font-weight:600}
-.pc-close:hover{background:rgba(255,59,92,0.22);border-color:var(--r)}
+.pc-lev{font-size:.48rem;padding:.08rem .28rem;border-radius:3px;
+  background:rgba(0,150,255,0.1);color:var(--b);border:1px solid rgba(0,150,255,0.22)}
+.pc-dur{font-size:.48rem;color:var(--t2)}
+.pc-pnl{font-family:var(--head);font-size:.85rem;font-weight:700;font-variant-numeric:tabular-nums;
+  padding:.1rem .4rem;border-radius:4px}
+.pc-close{font-size:.52rem;padding:.12rem .35rem;background:rgba(255,59,92,0.08);
+  border:1px solid rgba(255,59,92,0.22);color:var(--r);border-radius:3px;cursor:pointer;
+  font-family:var(--mono);flex-shrink:0}
+.pc-close:hover{background:rgba(255,59,92,0.2)}
+.pc-row2{display:flex;gap:.5rem;font-size:.57rem;color:var(--t1);flex-wrap:wrap}
+.pc-lbl{color:var(--t2);font-size:.5rem}
+.pc-bar-wrap{display:flex;align-items:center;gap:.3rem;font-size:.55rem}
+.pc-bar-track{flex:1;height:4px;background:var(--t2);border-radius:2px;overflow:hidden;min-width:60px}
+.pc-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--b),var(--g));transition:width .4s}
+.pc-tp-list{display:flex;gap:.18rem;flex-wrap:wrap}
+.pc-tp{font-size:.5rem;padding:.08rem .28rem;border-radius:3px;border:1px solid}
 .pc-ai{font-size:.54rem;color:var(--t1);background:rgba(0,150,255,0.04);
-  border-left:2px solid rgba(0,150,255,0.2);padding:.2rem .45rem;
+  border-left:2px solid rgba(0,150,255,0.18);padding:.18rem .4rem;
   border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── SENTIMENT BAR ── */
@@ -479,7 +494,7 @@ input[type=text]:focus{outline:none;border-color:var(--b)}
     <!-- PİYASA TAB -->
     <div class="tab-pane active" id="tab-mkt" style="overflow:hidden;min-height:0">
       <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem .6rem;border-bottom:1px solid var(--b0);flex-shrink:0;background:var(--s0)">
-        <input type="text" id="mkt-search" placeholder="🔍 BTC, ETH, SOL..." style="max-width:150px" oninput="renderMkt()" onkeydown="if(event.key==='Escape'){this.value='';renderMkt();}">
+        <input type="text" id="mkt-search" placeholder="BTC, ETH, SOL..." style="max-width:140px" oninput="renderMkt()">
         <span style="font-size:.55rem;color:var(--t2)" id="mkt-cnt">0 sembol</span>
         <span style="margin-left:auto;font-size:.52rem;color:var(--t2)">Sırala:</span>
         <select id="mkt-sort" onchange="renderMkt()" style="background:var(--s2);border:1px solid var(--b0);color:var(--t1);font-family:var(--mono);font-size:.55rem;padding:.15rem .3rem;border-radius:3px">
@@ -492,18 +507,17 @@ input[type=text]:focus{outline:none;border-color:var(--b)}
       <div class="mkt-wrap">
         <table>
           <thead><tr>
-            <th style="text-align:left;width:80px">Sembol</th>
+            <th style="text-align:left">Sembol</th>
             <th>Fiyat</th>
             <th>24s %</th>
             <th>RSI</th>
             <th>MACD</th>
-            <th>BB %</th>
             <th>Hacim</th>
-            <th style="width:60px">Trend</th>
+            <th>Trend</th>
             <th>Sinyal</th>
-            <th style="width:60px">İşlem</th>
+            <th>İşlem</th>
           </tr></thead>
-          <tbody id="mkt-body"><tr><td colspan="10" class="empty" style="height:60px">Veriler yükleniyor...</td></tr></tbody>
+          <tbody id="mkt-body"><tr><td colspan="9" class="empty" style="height:60px">Veriler yükleniyor...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -612,8 +626,6 @@ input[type=text]:focus{outline:none;border-color:var(--b)}
       <div class="stat-cell"><div class="stat-l">Açık PnL</div><div class="stat-v" id="s-opnl">$0</div><div class="stat-s">unrealized</div></div>
       <div class="stat-cell"><div class="stat-l">Semboller</div><div class="stat-v b" id="s-syms">0</div><div class="stat-s">izleniyor</div></div>
       <div class="stat-cell"><div class="stat-l">Risk/Ödül</div><div class="stat-v y" id="s-rr">—</div><div class="stat-s">avg win/loss</div></div>
-      <div class="stat-cell"><div class="stat-l">Kazanç Streaki</div><div class="stat-v g" id="s-wstr">—</div><div class="stat-s" id="s-wstr-sub">peak</div></div>
-      <div class="stat-cell"><div class="stat-l">Kayıp Streaki</div><div class="stat-v r" id="s-lstr">—</div><div class="stat-s" id="s-curr-str">güncel</div></div>
     </div>
 
     <!-- PnL Chart -->
@@ -650,37 +662,37 @@ input[type=text]:focus{outline:none;border-color:var(--b)}
         <div class="ctrl-item">
           <div class="ctrl-lbl">Max Pozisyon</div>
           <div class="ctrl-val" id="cv-maxpos">5</div>
-          <input type="range" class="ctrl-slider" id="cs-maxpos" min="1" max="20" value="5" oninput="updateCtrl('maxpos',this.value);debounceSave()">
+          <input type="range" class="ctrl-slider" id="cs-maxpos" min="1" max="20" value="5" oninput="updateCtrl('maxpos',this.value)">
           <div class="ctrl-hint">Aynı anda açılabilecek max pozisyon</div>
         </div>
         <div class="ctrl-item">
           <div class="ctrl-lbl">Risk % (sermaye başına)</div>
           <div class="ctrl-val" id="cv-risk">2%</div>
-          <input type="range" class="ctrl-slider" id="cs-risk" min="1" max="20" value="2" step="1" oninput="updateCtrl('risk',this.value);debounceSave()">
+          <input type="range" class="ctrl-slider" id="cs-risk" min="1" max="20" value="2" step="1" oninput="updateCtrl('risk',this.value)">
           <div class="ctrl-hint">Her trade için bakiyenin yüzdesi</div>
         </div>
         <div class="ctrl-item">
           <div class="ctrl-lbl">Take Profit %</div>
           <div class="ctrl-val" id="cv-tp">5%</div>
-          <input type="range" class="ctrl-slider" id="cs-tp" min="1" max="20" value="5" step="1" oninput="updateCtrl('tp',this.value);debounceSave()">
+          <input type="range" class="ctrl-slider" id="cs-tp" min="1" max="20" value="5" step="1" oninput="updateCtrl('tp',this.value)">
           <div class="ctrl-hint">Kâr hedefi</div>
         </div>
         <div class="ctrl-item">
           <div class="ctrl-lbl">Stop Loss %</div>
           <div class="ctrl-val" id="cv-sl">3%</div>
-          <input type="range" class="ctrl-slider" id="cs-sl" min="1" max="15" value="3" step="1" oninput="updateCtrl('sl',this.value);debounceSave()">
+          <input type="range" class="ctrl-slider" id="cs-sl" min="1" max="15" value="3" step="1" oninput="updateCtrl('sl',this.value)">
           <div class="ctrl-hint">Zarar kes</div>
         </div>
         <div class="ctrl-item">
           <div class="ctrl-lbl">Min Güven %</div>
           <div class="ctrl-val" id="cv-conf">60%</div>
-          <input type="range" class="ctrl-slider" id="cs-conf" min="30" max="95" value="60" step="5" oninput="updateCtrl('conf',this.value);debounceSave()">
+          <input type="range" class="ctrl-slider" id="cs-conf" min="30" max="95" value="60" step="5" oninput="updateCtrl('conf',this.value)">
           <div class="ctrl-hint">AI güven eşiği — yüksek = az trade</div>
         </div>
         <div class="ctrl-item">
           <div class="ctrl-lbl">Tarama Büyüklüğü</div>
           <div class="ctrl-val" id="cv-batch">50</div>
-          <input type="range" class="ctrl-slider" id="cs-batch" min="10" max="200" value="50" step="10" oninput="updateCtrl('batch',this.value);debounceSave()">
+          <input type="range" class="ctrl-slider" id="cs-batch" min="10" max="200" value="50" step="10" oninput="updateCtrl('batch',this.value)">
           <div class="ctrl-hint">Her turda kaç coin taransın</div>
         </div>
         <div class="ctrl-item" style="grid-column:1/3">
@@ -856,11 +868,6 @@ async function fetchStatus(){
     set('s-eps',rl.epsilon?rl.epsilon.toFixed(3):'—');
     set('s-dd',(d.max_drawdown_pct||0).toFixed(2)+'%','r');
     set('s-rr',(d.risk_reward||0).toFixed(2),'y');
-    set('s-wstr',d.win_streak||0,'g');
-    set('s-lstr',d.loss_streak||0,'r');
-    const cs=d.current_streak||0;
-    const csel=document.getElementById('s-curr-str');
-    if(csel){csel.textContent=cs>0?`+${cs} seri`:cs<0?`${cs} seri`:'düz';csel.style.color=cs>0?'var(--g)':cs<0?'var(--r)':'var(--t2)';}
 
     const openPnl=d.open_pnl||0;
     set('s-opnl',(openPnl>=0?'+':'')+'$'+openPnl.toFixed(4),openPnl>=0?'g':'r');
@@ -924,10 +931,6 @@ async function fetchMarket(){
     updateTape();
     updateMovers();
     updateSentiment();
-    // Coin sayısını başlıkta göster
-    const symCount=Object.keys(mktData).length;
-    const el=document.querySelector('#tab-mkt ~ * .mkt-wrap') ||document.getElementById('mkt-cnt');
-    document.getElementById('mkt-cnt').textContent=symCount+' sembol';
   }catch(e){console.warn('market',e)}
 }
 
@@ -956,36 +959,28 @@ function renderMkt(){
     if(sort==='rsi') return (b[1].rsi||50)-(a[1].rsi||50);
     return a[0].localeCompare(b[0]);
   });
-  const shown=q?entries.length:Math.min(entries.length,300);
-  document.getElementById('mkt-cnt').textContent=`${shown}/${entries.length} sembol`;
+  document.getElementById('mkt-cnt').textContent=entries.length+' sembol';
   updateMovers(entries);
 
-  // Arama yoksa ilk 300'ü göster (performans), arama varsa tümünü
-  const displayEntries=q?entries:entries.slice(0,300);
-  const rows=displayEntries.map(([sym,d])=>{
+  const rows=entries.slice(0,100).map(([sym,d])=>{
     const chg=d.change_24h||0,rsi=d.rsi||50,price=d.price||0;
     const rsiCls=rsi>70?'rsi-ob':rsi<30?'rsi-os':'rsi-n';
     const chgCol=chg>=0?'var(--g)':'var(--r)';
     const sig=d.signal||'';
     const sigDir=sig.toLowerCase().includes('al')||sig.toLowerCase().includes('buy')?'buy':sig.toLowerCase().includes('sat')||sig.toLowerCase().includes('sell')?'sell':'';
-    const bb_lo=d.bb_lower||0,bb_hi=d.bb_upper||0;
-    const bb_pos=bb_lo&&bb_hi&&price?Math.round((price-bb_lo)/(bb_hi-bb_lo)*100):null;
-    const bb_col=bb_pos!==null?(bb_pos<=15?'var(--g)':bb_pos>=85?'var(--r)':'var(--t1)'):'var(--t2)';
-    const rowBg=chg>=3?'rgba(0,195,130,0.04)':chg<=-3?'rgba(255,59,92,0.04)':'transparent';
-    return`<tr style="background:${rowBg}">
-      <td><div class="sym-cell"><div class="sym-name">${shortSym(sym)}</div><div class="sym-sub" style="font-size:.42rem">${sym}</div></div></td>
-      <td style="font-variant-numeric:tabular-nums">${fP(price)}</td>
-      <td style="color:${chgCol};font-weight:${Math.abs(chg)>3?'700':'400'}">${chg>=0?'+':''}${chg.toFixed(2)}%</td>
-      <td><span class="${rsiCls}" style="font-weight:${rsi<30||rsi>70?'700':'400'}">${rsi.toFixed(1)}</span></td>
-      <td style="color:${(d.macd||0)>=(d.macd_signal||0)?'var(--g)':'var(--r)';font-size:.55rem}">${(d.macd||0).toFixed(5)}</td>
-      <td><span style="color:${bb_col};font-weight:${bb_pos!==null&&(bb_pos<=15||bb_pos>=85)?'700':'400'}">${bb_pos!==null?bb_pos+'%':'—'}</span></td>
-      <td style="color:var(--t1)">${fV(d.volume_24h||0)}</td>
+    return`<tr>
+      <td><div class="sym-cell"><div class="sym-name">${shortSym(sym)}</div><div class="sym-sub">${sym}</div></div></td>
+      <td>${fP(price)}</td>
+      <td style="color:${chgCol}">${chg>=0?'+':''}${chg.toFixed(2)}%</td>
+      <td><span class="${rsiCls}">${rsi.toFixed(1)}</span></td>
+      <td style="color:${(d.macd||0)>=(d.macd_signal||0)?'var(--g)':'var(--r)'}">${(d.macd||0).toFixed(5)}</td>
+      <td>${fV(d.volume_24h||0)}</td>
       <td>${sparkSVG(sym)}</td>
-      <td>${sig?`<div class="sig-cell">${sigDir?`<span class="sig-dir ${sigDir==='buy'?'sd-buy':'sd-sell'}">${sigDir==='buy'?'AL':'SAT'}</span>`:''}${sig.replace(/↑\s*(Al|Buy)|↓\s*(Sat|Sell)/i,'').trim().substring(0,10)}</div>`:'<span style="color:var(--t2)">—</span>'}</td>
+      <td>${sig?`<div class="sig-cell">${sigDir?`<span class="sig-dir ${sigDir==='buy'?'sd-buy':'sd-sell'}">${sigDir==='buy'?'AL':'SAT'}</span>`:''}${sig.replace(/↑\s*(Al|Buy)|↓\s*(Sat|Sell)/i,'').trim().substring(0,12)}</div>`:'<span style="color:var(--t2)">—</span>'}</td>
       <td class="trade-btns"><button class="tb tb-l" onclick="openTM('${sym}','long')">▲L</button><button class="tb tb-s" onclick="openTM('${sym}','short')">▼S</button></td>
     </tr>`;
   }).join('');
-  document.getElementById('mkt-body').innerHTML=rows||'<tr><td colspan="10" class="empty" style="height:60px">Sonuç yok</td></tr>';
+  document.getElementById('mkt-body').innerHTML=rows||'<tr><td colspan="9" class="empty" style="height:60px">Sonuç yok</td></tr>';
 }
 
 function updateTape(){
@@ -1051,26 +1046,23 @@ async function fetchSignals(){
       const rsiCol=rsi<35?'var(--g)':rsi>65?'var(--r)':'var(--y)';
       const chg=ind.change_24h||0;
       const barCol=isBuy?'#00c382':'#ff3b5c';
-      return`<div class="sig-card ${isBuy?'buy-c':'sell-c'}" style="border-left:3px solid ${isBuy?'rgba(0,195,130,0.5)':'rgba(255,59,92,0.5)'}">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:.3rem">
-          <div style="display:flex;align-items:center;gap:.35rem">
-            <span style="font-family:var(--head);font-size:.95rem;font-weight:800;color:#fff">${shortSym(s.symbol)}</span>
-            <span style="font-size:.72rem;font-weight:800;padding:.1rem .38rem;border-radius:4px;${isBuy?'background:rgba(0,195,130,0.15);color:var(--g);border:1px solid rgba(0,195,130,0.35)':'background:rgba(255,59,92,0.15);color:var(--r);border:1px solid rgba(255,59,92,0.35)'}">${isBuy?'▲ AL':'▼ SAT'}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:.35rem">
-            <span style="font-size:.55rem;color:${rsiCol};font-weight:600">RSI ${rsi.toFixed(0)}</span>
-            <span style="font-size:.55rem;color:${chg>=0?'var(--g)':'var(--r)'}">${chg>=0?'+':''}${chg.toFixed(1)}%</span>
-            <span style="font-family:var(--head);font-size:.85rem;font-weight:800;color:${barCol}">${pct}%</span>
+      return`<div class="sig-card ${isBuy?'buy-c':'sell-c'}">
+        <div class="sc-top">
+          <span class="sc-sym">${shortSym(s.symbol)}</span>
+          <div style="display:flex;align-items:center;gap:.3rem">
+            <span style="font-size:.5rem;color:${rsiCol}">RSI ${rsi.toFixed(0)}</span>
+            <span style="font-size:.5rem;color:${chg>=0?'var(--g)':'var(--r)'}">${chg>=0?'+':''}${chg.toFixed(1)}%</span>
+            <span class="sc-dir ${isBuy?'sd-buy':'sd-sell'}">${isBuy?'AL':'SAT'}</span>
           </div>
         </div>
-        <div style="height:4px;border-radius:2px;background:var(--t2);margin:.2rem 0">
+        <div style="height:3px;border-radius:2px;background:var(--t2);margin:.1rem 0">
           <div style="height:100%;width:${pct}%;background:${barCol};border-radius:2px;transition:width .3s"></div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:.3rem">
-          <span style="font-size:.52rem;color:var(--t1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.reason||'—'}</span>
+        <div class="sc-meta">
+          <span class="sc-reason">${s.reason||'—'}</span>
           <button class="sc-trade-btn" onclick="openTM('${s.symbol}','${isBuy?'long':'short'}')">⚡ İşlem</button>
         </div>
-        <div style="font-size:.48rem;color:var(--t2);margin-top:.1rem">${fT(s.timestamp)}</div>
+        <div class="sc-time">${fT(s.timestamp)} · ${pct}% güven</div>
       </div>`;
     }).join('');
   }catch(e){console.warn('signals',e)}
@@ -1083,14 +1075,7 @@ async function fetchPositions(){
     const open=d.open||[];
     const cnt=open.length;
     set('pos-cnt',cnt);
-    // Tab button içindeki badge
-    const tabBadge=document.querySelector('.col:first-child .tab-btn:nth-child(2) .badge');
-    if(tabBadge) tabBadge.textContent=cnt;
     set('k-op',cnt,'y');
-    // Open pozisyon PnL topbar'da göster
-    const openPnlTop=open.reduce((s,p)=>s+(p.pnl||0),0);
-    const opEl=document.getElementById('k-op');
-    if(opEl&&cnt>0) opEl.style.color=openPnlTop>=0?'var(--g)':'var(--r)';
 
     // Pos summary
     const sumEl=document.getElementById('pos-summary');
@@ -1116,71 +1101,40 @@ async function fetchPositions(){
       const isL=p.side==='long';
       const pnl=p.pnl||0,pnlPct=p.pnl_pct||0;
       const pnlCol=pnl>=0?'var(--g)':'var(--r)';
+      const pnlBg=pnl>=0?'rgba(0,195,130,0.1)':'rgba(255,59,92,0.1)';
       const lev=p.leverage||1;
       const prog=Math.min(100,p.progress_pct||0);
       const dur=fDur(p.duration_sec||0);
       const tps=p.take_profit_levels||[p.take_profit];
       const idx=p.tp_hit_count||0;
       const sym=shortSym(p.symbol);
-      const curP=p.current_price||0;
-      const entP=p.entry_price||0;
-      const slP=p.stop_loss||0;
-      const posSize=(p.value_usd||0)*lev;
-      // SL mesafesi yüzdesi
-      const slDist=entP>0?Math.abs(entP-slP)/entP*100:0;
-      const nextTP=tps[idx]||tps[tps.length-1];
-      const tpDist=entP>0?Math.abs(nextTP-entP)/entP*100:0;
-      const cardBorder=isL?'#00c382':'#ff3b5c';
-      const priceMoved=isL?(curP-entP):( entP-curP);
-      const priceMovedPct=entP>0?priceMoved/entP*100:0;
-      return`<div class="pos-card" style="border-left:4px solid ${cardBorder}22;background:var(--s1)">
-        <!-- Satır 1: Sembol + Yön + Kaldıraç (büyük) + Süre -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:.3rem">
-          <div style="display:flex;align-items:center;gap:.4rem">
-            <span style="font-family:var(--head);font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:.02em">${sym}</span>
-            <span style="font-size:.7rem;font-weight:800;padding:.12rem .45rem;border-radius:4px;${isL?'background:rgba(0,195,130,0.15);color:var(--g);border:1px solid rgba(0,195,130,0.35)':'background:rgba(255,59,92,0.15);color:var(--r);border:1px solid rgba(255,59,92,0.35)'}">${isL?'▲ LONG':'▼ SHORT'}</span>
-            <span style="font-size:.78rem;font-weight:800;padding:.1rem .42rem;border-radius:4px;background:rgba(0,212,255,0.12);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">${lev}x</span>
-            <span style="font-size:.55rem;color:var(--t2)">⏱ ${dur}</span>
+      const curVsEntry=(p.current_price||0)>=(p.entry_price||0);
+      return`<div class="pos-card" style="border-left:3px solid ${pnl>=0?'rgba(0,195,130,0.4)':'rgba(255,59,92,0.4)'}">
+        <div class="pc-row1">
+          <div style="display:flex;align-items:center;gap:.25rem;flex-shrink:0">
+            <span class="pc-sym">${sym}</span>
+            <span class="pc-side ${isL?'ps-l':'ps-s'}">${isL?'LONG':'SHORT'}</span>
+            ${lev>1?`<span class="pc-lev">${lev}x</span>`:''}
+            <span class="pc-dur">⏱ ${dur}</span>
           </div>
-          <button class="pc-close" onclick="closePos('${p.symbol}')" style="font-size:.65rem;padding:.2rem .5rem">✕ KAPAT</button>
-        </div>
-        <!-- Satır 2: PnL büyük gösterim (Binance tarzı) -->
-        <div style="display:flex;align-items:baseline;gap:.6rem;margin:.2rem 0;padding:.3rem .4rem;border-radius:5px;background:${pnl>=0?'rgba(0,195,130,0.07)':'rgba(255,59,92,0.07)'}">
-          <span style="font-family:var(--head);font-size:1.5rem;font-weight:800;color:${pnlCol};font-variant-numeric:tabular-nums">${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(4)}</span>
-          <span style="font-family:var(--head);font-size:1.05rem;font-weight:700;color:${pnlCol};opacity:.85">(${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%)</span>
-          <span style="font-size:.55rem;color:var(--t2);margin-left:auto">PnL (ROI)</span>
-        </div>
-        <!-- Satır 3: Giriş / Anlık / Pozisyon Büyüklüğü / Miktar -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.2rem .5rem;font-size:.6rem;padding:.25rem 0;border-top:1px solid var(--b0)">
-          <div><div style="color:var(--t2);font-size:.48rem;text-transform:uppercase;letter-spacing:.08em">Giriş Fiyatı</div><div style="color:#fff;font-weight:600;font-variant-numeric:tabular-nums">${fP(entP)}</div></div>
-          <div><div style="color:var(--t2);font-size:.48rem;text-transform:uppercase;letter-spacing:.08em">Anlık Fiyat</div><div style="color:${priceMoved>=0?'var(--g)':'var(--r)'};font-weight:600;font-variant-numeric:tabular-nums">${fP(curP)} <span style="font-size:.48rem">(${priceMovedPct>=0?'+':''}${priceMovedPct.toFixed(2)}%)</span></div></div>
-          <div><div style="color:var(--t2);font-size:.48rem;text-transform:uppercase;letter-spacing:.08em">Pozisyon Büyüklüğü</div><div style="color:var(--y);font-weight:700;font-size:.7rem">$${posSize.toFixed(2)}</div></div>
-          <div><div style="color:var(--t2);font-size:.48rem;text-transform:uppercase;letter-spacing:.08em">Marjin</div><div style="color:var(--t1);font-weight:600">$${(p.value_usd||0).toFixed(2)}</div></div>
-        </div>
-        <!-- Satır 4: SL ve TP hedefleri Binance tarzı büyük gösterim -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin:.2rem 0">
-          <div style="padding:.3rem .5rem;border-radius:4px;background:rgba(255,59,92,0.07);border:1px solid rgba(255,59,92,0.2)">
-            <div style="font-size:.48rem;color:var(--r);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.12rem">🛑 Stop Loss <span style="color:var(--t2)">(${slDist.toFixed(1)}%)</span></div>
-            <div style="font-family:var(--head);font-size:1.05rem;font-weight:800;color:var(--r);font-variant-numeric:tabular-nums">${fP(slP)}</div>
-          </div>
-          <div style="padding:.3rem .5rem;border-radius:4px;background:rgba(0,195,130,0.07);border:1px solid rgba(0,195,130,0.2)">
-            <div style="font-size:.48rem;color:var(--g);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.12rem">🎯 Take Profit ${tps.length>1?`(${idx+1}/${tps.length})`:''} <span style="color:var(--t2)">(${tpDist.toFixed(1)}%)</span></div>
-            <div style="font-family:var(--head);font-size:1.05rem;font-weight:800;color:var(--g);font-variant-numeric:tabular-nums">${fP(nextTP)}</div>
+          <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0">
+            <span class="pc-pnl" style="color:${pnlCol};background:${pnlBg}">${pnl>=0?'+':''}$${pnl.toFixed(4)} <span style="font-size:.65rem;opacity:.8">${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</span></span>
+            <button class="pc-close" onclick="closePos('${p.symbol}')">✕</button>
           </div>
         </div>
-        <!-- Satır 5: Progress bar SL → TP -->
-        <div style="display:flex;align-items:center;gap:.35rem;font-size:.52rem">
-          <span style="color:var(--r);flex-shrink:0;min-width:8px">SL</span>
-          <div style="flex:1;height:5px;background:var(--t2);border-radius:3px;overflow:hidden;position:relative">
-            <div style="height:100%;width:${prog}%;background:linear-gradient(90deg,${isL?'var(--r)':'var(--g)'},${isL?'var(--g)':'var(--r)'});border-radius:3px;transition:width .5s"></div>
-          </div>
-          <span style="color:var(--t2);flex-shrink:0">${prog.toFixed(0)}%</span>
-          <span style="color:var(--g);flex-shrink:0;min-width:8px">TP</span>
+        <div class="pc-row2">
+          <span><span class="pc-lbl">Giriş</span> ${fP(p.entry_price)}</span>
+          <span><span class="pc-lbl">Anlık</span> <span style="color:${curVsEntry?'var(--g)':'var(--r)'}">${fP(p.current_price)}</span></span>
+          <span><span class="pc-lbl">Değer</span> $${(p.value_usd||0).toFixed(2)}</span>
         </div>
-        <!-- Satır 6: TP seviyeleri (çoklu TP ise) -->
-        ${tps.length>1?`<div style="display:flex;gap:.2rem;flex-wrap:wrap;margin-top:.1rem">${tps.map((t,i)=>{const hit=i<idx,active=i===idx;return`<div style="flex:1;padding:.2rem .3rem;border-radius:3px;text-align:center;border:1px solid ${hit?'rgba(0,195,130,0.4)':active?'rgba(0,195,130,0.6)':'var(--t2)'};background:${hit?'rgba(0,195,130,0.1)':active?'rgba(0,195,130,0.08)':'transparent'}"><div style="font-size:.45rem;color:${hit?'var(--g)':active?'var(--g)':'var(--t2)'};margin-bottom:.05rem">${hit?'✓ ':active?'▶ ':''}TP${i+1}</div><div style="font-size:.6rem;font-weight:700;color:${hit?'var(--g)':active?'#fff':'var(--t2)'};font-variant-numeric:tabular-nums">${fP(t)}</div></div>`;}).join('')}</div>`:''}
-        <!-- Satır 7: AI özeti kompakt -->
-        ${p.ai_summary?`<div class="pc-ai" title="${p.ai_summary}" style="margin-top:.15rem">⬡ ${p.ai_summary}</div>`:''}
+        <div class="pc-bar-wrap">
+          <span style="color:var(--r);flex-shrink:0;font-size:.52rem">🛑 ${fP(p.stop_loss)}</span>
+          <div class="pc-bar-track"><div class="pc-bar-fill" style="width:${prog}%"></div></div>
+          <span style="color:var(--t2);font-size:.5rem;flex-shrink:0">${prog.toFixed(0)}%</span>
+          <span style="color:var(--g);flex-shrink:0;font-size:.52rem">🎯 ${fP(p.take_profit)}${tps.length>1?' '+(idx+1)+'/'+tps.length:''}</span>
+        </div>
+        ${tps.length>1?`<div class="pc-tp-list">${tps.map((t,i)=>`<span class="pc-tp" style="color:${i<idx?'var(--g)':i===idx?'#fff':'var(--t2)'};border-color:${i<idx?'rgba(0,195,130,0.35)':i===idx?'rgba(255,255,255,0.3)':'var(--t2)'};background:${i<idx?'rgba(0,195,130,0.08)':i===idx?'rgba(255,255,255,0.04)':'transparent'}">${i<idx?'✓':i===idx?'▶':'○'} TP${i+1} ${fP(t)}</span>`).join('')}</div>`:''}
+        ${p.ai_summary?`<div class="pc-ai" title="${p.ai_summary}">⬡ ${p.ai_summary}</div>`:''}
       </div>`;
     }).join('');
   }catch(e){console.warn('positions',e)}
@@ -1364,9 +1318,6 @@ function selectLevCtrl(l){
     b.classList.toggle('active',l===levs[i]||(l===1&&i===0));
   });
 }
-
-let _saveTimer=null;
-function debounceSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(saveCtrl,1200);}
 
 async function saveCtrl(){
   const payload={
